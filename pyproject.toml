@@ -12,12 +12,12 @@ dependencies = [
     "uvicorn>=0.46.0",
 ]
 
+[project.scripts]
+app = "bin.runner:run"
+
 [dependency-groups]
-dev = [
-    "ruff>=0.15.12",
-]
+dev = ["ruff>=0.15.12"]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
-

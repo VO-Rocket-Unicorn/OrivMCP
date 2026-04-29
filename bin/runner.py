@@ -1,0 +1,26 @@
+import uvicorn
+
+from aeromcp.config import settings
+
+
+def run():
+    """
+    Starts the FastAPI application using Uvicorn.
+    This function launches the FastAPI server with host and log level
+    determined by the environment configuration.
+
+    - In PRODUCTION: binds to 0.0.0.0 and uses INFO logging level.
+    - In other environments: binds to 127.0.0.1 and uses DEBUG logging level.
+    """
+
+    uvicorn.run(
+        app="aeromcp.server.app:app",
+        host=settings.host,
+        port=settings.port,
+        workers=settings.workers,
+        timeout_keep_alive=settings.timeout_keep_alive,
+    )
+
+
+if __name__ == "__main__":
+    run()
