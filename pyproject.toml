@@ -5,8 +5,19 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 
-dependencies = []
+dependencies = [
+    "fastapi>=0.136.1",
+    "pydantic>=2.13.3",
+    "pydantic-settings>=2.14.0",
+    "uvicorn>=0.46.0",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.12",
+]
 
 [build-system]
-requires = ["hatching"]
+requires = ["hatchling"]
 build-backend = "hatchling.build"
+
