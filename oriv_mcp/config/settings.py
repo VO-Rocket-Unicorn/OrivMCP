@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """
     Application runtime configuration.
-    Reads from environment variables with prefix: AEROMCP_
+    Reads from environment variables with prefix: ORIV_MCP_
     """
 
     # ---- server ----
@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     env: str = "dev"  # dev | prod
 
     model_config = SettingsConfigDict(
-        env_prefix="AEROMCP_",
+        env_prefix="ORIV_MCP_",
         env_file=".env",
         extra="ignore",
     )

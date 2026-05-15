@@ -1,5 +1,3 @@
-# aeromcp/core/bootstrap.py
-
 import importlib
 import pkgutil
 
@@ -18,6 +16,6 @@ def register_all() -> None:
     Automatically import all capability modules so decorators execute.
     """
 
-    _import_submodules("aeromcp.capabilities.tools")
-    _import_submodules("aeromcp.capabilities.resources")
-    _import_submodules("aeromcp.capabilities.prompts")
+    _import_submodules("oriv-mcp.capabilities.tools")
+    _import_submodules("oriv-mcp.capabilities.resources")
+    _import_submodules("oriv-mcp.capabilities.prompts")
