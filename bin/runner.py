@@ -14,7 +14,7 @@ def run():
     """
 
     uvicorn.run(
-        app="oriv-mcp.server.app:app",
+        app="oriv_mcp.server.app:app",
         host=settings.host,
         port=settings.port,
         workers=settings.workers,

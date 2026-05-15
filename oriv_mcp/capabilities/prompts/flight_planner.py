@@ -1,11 +1,11 @@
-from oriv_mcp.core.decorators import prompt
 from oriv_mcp.schemas.flight import PlannerInput
 
+from oriv_mcp.server.app import mcp_app
 
-@prompt(
+
+@mcp_app.tool(
     name="flight_planner",
     description="Plan how to book a flight",
-    input_schema=PlannerInput,
 )
 def flight_planner(input: PlannerInput) -> str:
     return f"""
