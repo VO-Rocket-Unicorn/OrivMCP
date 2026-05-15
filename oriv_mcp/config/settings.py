@@ -15,7 +15,10 @@ class Settings(BaseSettings):
     )
 
     # ---- server ----
-    host: str = Field(default="127.0.01", description="Host to run the server on")
+    project_name: str = Field(
+        default="OrivMCP", description="Project name for the MCP server"
+    )
+    host: str = Field(default="0.0.0.0", description="Host to run the server on")
     port: int = Field(default=8000, description="Port to run the server on")
     workers: int = Field(
         default=1, description="Number of worker processes for handling requests"

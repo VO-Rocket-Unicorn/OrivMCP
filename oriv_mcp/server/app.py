@@ -1,4 +1,3 @@
-import uvicorn
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import (
     TransportSecuritySettings,
@@ -7,22 +6,17 @@ from mcp.server.transport_security import (
 from oriv_mcp.server.bootstrap import (
     register_all_tools,
 )
+from oriv_mcp.config import settings
 
 mcp_app = FastMCP(
-    "AeroMCP",
-    host="0.0.0.0",
-    port=8000,
+    name=settings.project_name,
+    host=settings.host,
+    port=settings.port,
     transport_security=TransportSecuritySettings(
         # IMPORTANT
-        allowed_hosts=[
-            "progeny-certainly-dating.ngrok-free.dev",
-            "127.0.0.1",
-            "localhost",
-        ],
+        allowed_hosts=settings.allowed_hosts,
         # optional
-        allowed_origins=[
-            "https://progeny-certainly-dating.ngrok-free.dev",
-        ],
+        allowed_origins=settings.allowed_origins,
     ),
 )
 
@@ -32,14 +26,3 @@ register_all_tools()
 
 
 app = mcp_app.streamable_http_app()
-
-
-if __name__ == "__main__":
-
-    uvicorn.run(
-        app,
-        host="0.0.0.0",
-        port=8000,
-        # proxy_headers=True,
-        forwarded_allow_ips="*",
-    )
