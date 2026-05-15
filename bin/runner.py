@@ -1,6 +1,6 @@
 import uvicorn
 
-from aeromcp.config import settings
+from oriv_mcp.config import settings
 
 
 def run():

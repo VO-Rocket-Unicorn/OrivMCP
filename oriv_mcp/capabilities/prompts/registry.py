@@ -1,7 +1,7 @@
 from typing import Dict, List
 
-from aeromcp.capabilities.prompts.base import BasePrompt
-from aeromcp.types.common import SpecType
+from oriv_mcp.capabilities.prompts.base import BasePrompt
+from oriv_mcp.types.common import SpecType
 
 
 class PromptRegistry:

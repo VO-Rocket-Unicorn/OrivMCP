@@ -3,8 +3,8 @@ from functools import cached_property
 from typing import Any, Generic
 
 
-from aeromcp.types.common import SpecType
-from aeromcp.types.generics import T_Input, T_Output
+from oriv_mcp.types.common import SpecType
+from oriv_mcp.types.generics import T_Input, T_Output
 
 
 class BasePrompt(ABC, Generic[T_Input, T_Output]):

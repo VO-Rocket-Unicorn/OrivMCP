@@ -1,5 +1,5 @@
-from aeromcp.core.decorators import prompt
-from aeromcp.schemas.flight import PlannerInput
+from oriv_mcp.core.decorators import prompt
+from oriv_mcp.schemas.flight import PlannerInput
 
 
 @prompt(

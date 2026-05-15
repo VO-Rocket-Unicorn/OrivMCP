@@ -3,9 +3,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
-from aeromcp.server.rpc_router import handle_rpc
-from aeromcp.schemas.rpc import JSONRPCRequest, JSONRPCResponse
-from aeromcp.core.bootstrap import register_all
+from oriv_mcp.server.rpc_router import handle_rpc
+from oriv_mcp.schemas.rpc import JSONRPCRequest, JSONRPCResponse
+from oriv_mcp.core.bootstrap import register_all
 
 
 @asynccontextmanager

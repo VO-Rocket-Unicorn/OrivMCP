@@ -1,5 +1,5 @@
-from aeromcp.core.decorators import tool
-from aeromcp.schemas.flight import (
+from oriv_mcp.core.decorators import tool
+from oriv_mcp.schemas.flight import (
     SearchFlightsInput,
     SearchFlightsOutput,
     Flight,

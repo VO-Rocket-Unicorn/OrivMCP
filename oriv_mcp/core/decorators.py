@@ -2,12 +2,11 @@ import asyncio
 from functools import wraps
 from typing import Callable, Coroutine, override
 
-from aeromcp.capabilities.prompts.base import BasePrompt
-from aeromcp.capabilities.resources.base import BaseResource
-from aeromcp.capabilities.tools.base import BaseTool
-from aeromcp.types.generics import T_Input, T_Output
-from aeromcp.core.registry import tools, resources, prompts
-
+from oriv_mcp.capabilities.prompts.base import BasePrompt
+from oriv_mcp.capabilities.resources.base import BaseResource
+from oriv_mcp.capabilities.tools.base import BaseTool
+from oriv_mcp.types.generics import T_Input, T_Output
+from oriv_mcp.core.registry import tools, resources, prompts
 
 FuncType = (
     Callable[[T_Input], T_Output] | Callable[[T_Input], Coroutine[T_Output, None, None]]

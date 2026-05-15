@@ -1,5 +1,5 @@
-from aeromcp.core.decorators import resource
-from aeromcp.schemas.flight import InventoryInput, InventoryOutput
+from oriv_mcp.core.decorators import resource
+from oriv_mcp.schemas.flight import InventoryInput, InventoryOutput
 
 
 @resource(

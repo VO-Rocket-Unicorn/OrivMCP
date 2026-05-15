@@ -1,7 +1,7 @@
 from typing import Dict, List
 
-from aeromcp.capabilities.resources.base import BaseResource
-from aeromcp.types.common import SpecType
+from oriv_mcp.capabilities.resources.base import BaseResource
+from oriv_mcp.types.common import SpecType
 
 
 class ResourceRegistry:

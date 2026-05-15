@@ -1,7 +1,7 @@
 from typing import Dict, List
 
-from aeromcp.capabilities.tools.base import BaseTool
-from aeromcp.types.common import SpecType
+from oriv_mcp.capabilities.tools.base import BaseTool
+from oriv_mcp.types.common import SpecType
 
 
 class ToolRegistry:

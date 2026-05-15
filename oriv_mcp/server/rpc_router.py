@@ -1,14 +1,13 @@
 from typing import Any, Callable, Awaitable, Dict, Type
 
-from aeromcp.core.registry import tools, resources, prompts
-from aeromcp.schemas.rpc import (
+from oriv_mcp.core.registry import tools, resources, prompts
+from oriv_mcp.schemas.rpc import (
     JSONRPCRequest,
     JSONRPCResponse,
     JSONRPCError,
     NamedInvocationParams,
     EmptyParams,
 )
-
 
 # JSON-RPC standard error codes
 METHOD_NOT_FOUND = -32601
