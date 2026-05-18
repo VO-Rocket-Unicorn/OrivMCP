@@ -18,3 +18,17 @@ def search_flights(input: SearchFlightsInput) -> SearchFlightsOutput:
     ]
 
     return SearchFlightsOutput(flights=flights)
+
+
+@mcp_app.tool(
+    name="show_cancelled_flights",
+    description="Show cancelled flight bookings",
+)
+def show_cancelled_flights(input: SearchFlightsInput) -> SearchFlightsOutput:
+    # mock data (replace with adapter later)
+    cancelled_flights = [
+        Flight(flight_number="AI101", price=5000),
+        Flight(flight_number="6E202", price=4500),
+    ]
+
+    return SearchFlightsOutput(flights=cancelled_flights)
