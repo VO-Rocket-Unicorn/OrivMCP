@@ -1,15 +1,16 @@
-from oriv_mcp.schemas.flight import InventoryInput, InventoryOutput
+from oriv_mcp.schemas.flight import InventoryOutput
 from oriv_mcp.server.app import mcp_app
 
 
-@mcp_app.tool(
+@mcp_app.resource(
+    uri="file://documents/{airport}",
     name="flight_inventory",
     description="Get flight inventory for an airport",
 )
-def flight_inventory(input: InventoryInput) -> InventoryOutput:
+def flight_inventory(airport: str) -> InventoryOutput:
     return InventoryOutput(
         flights=[
-            f"{input.airport}-DEL",
-            f"{input.airport}-MUM",
+            f"{airport}-DEL",
+            f"{airport}-MUM",
         ]
     )

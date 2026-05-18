@@ -3,16 +3,16 @@ from oriv_mcp.schemas.flight import PlannerInput
 from oriv_mcp.server.app import mcp_app
 
 
-@mcp_app.tool(
+@mcp_app.prompt(
     name="flight_planner",
     description="Plan how to book a flight",
 )
-def flight_planner(input: PlannerInput) -> str:
+def flight_planner(input: str) -> str:
     return f"""
 You are a flight booking assistant.
 
 Goal:
-{input.goal}
+{input}
 
 Steps:
 1. Identify origin and destination
