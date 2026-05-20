@@ -7,6 +7,7 @@ from oriv_mcp.server.bootstrap import (
     register_all_tools,
 )
 from oriv_mcp.config import settings
+from oriv_mcp.server.lifespan import lifespan
 
 mcp_app = FastMCP(
     name=settings.project_name,
@@ -18,6 +19,7 @@ mcp_app = FastMCP(
         # optional
         allowed_origins=settings.allowed_origins,
     ),
+    lifespan=lifespan
 )
 
 

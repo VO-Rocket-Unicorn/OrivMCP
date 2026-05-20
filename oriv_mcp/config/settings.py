@@ -1,4 +1,4 @@
-from pydantic import Field
+from pydantic import Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     """
 
     model_config = SettingsConfigDict(
-        env_prefix="ORIV_MCP_",
+        # env_prefix="ORIV_MCP_",
         env_file=".env",
         extra="ignore",
     )
@@ -37,6 +37,50 @@ class Settings(BaseSettings):
     allowed_origins: list[str] = Field(
         default_factory=list, description="List of allowed origins for CORS"
     )
+
+    # ---- urls ----
+    code_generation_base_url: str = Field(
+        ...,
+        description="Base URL for the code generation service",
+    )
+    csas_base_url: str = Field(
+        ...,
+        description="Base URL for the CSAS service",
+    )
+
+    def get_simulation_schema_url(self, category: str) -> str:
+        """Construct the URL to retrieve the simulation schema for a given category."""
+        return f"{self.code_generation_base_url}/simulations/{category}/schema"
+
+    @computed_field
+    @property
+    def component_list_url(self) -> str:
+        return f"{self.csas_base_url}/api/v1/internal/components"
+
+    @computed_field
+    @property
+    def upload_datasheet_url(self) -> str:
+        return f"{self.csas_base_url}/api/v1/internal/files/pdf"
+
+    @computed_field
+    @property
+    def create_component_url(self) -> str:
+        """Construct the URL to create a new component."""
+        return f"{self.csas_base_url}/api/v1/internal/components/extract"
+
+    def create_simulation_url(self, component_id: str) -> str:
+        """Construct the URL to create a new simulation for a given component."""
+        return f"{self.csas_base_url}/api/v1/internal/components/{component_id}/simulations/new"
+
+    def start_code_generation_url(self, component_id: str, simulation_id: str) -> str:
+        """Construct the URL to start code generation for a given simulation."""
+        return f"{self.csas_base_url}/api/v1/internal/components/{component_id}/simulations/{simulation_id}/code/generate"
+
+    def get_code_generation_status_url(
+        self, component_id: str, simulation_id: str
+    ) -> str:
+        """Construct the URL to get code generation status for a given simulation."""
+        return f"{self.csas_base_url}/api/v1/internal/components/{component_id}/simulations/{simulation_id}/code/status"
 
 
 # singleton instance

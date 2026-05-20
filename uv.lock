@@ -372,6 +372,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
+    { name = "httpx" },
     { name = "mcp" },
     { name = "numpy" },
     { name = "pydantic" },
@@ -388,6 +389,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.136.1" },
+    { name = "httpx", specifier = ">=0.28.1" },
     { name = "mcp", specifier = ">=1.9.0" },
     { name = "numpy", specifier = ">=2.4.5" },
     { name = "pydantic", specifier = ">=2.13.3" },
