@@ -1,5 +1,7 @@
+import httpx
 from pydantic import BaseModel, Field, TypeAdapter, ConfigDict
 
+from oriv_mcp.config.constants import ComponentCategory
 from oriv_mcp.server.app import mcp_app
 from oriv_mcp.config.http_config import http_client
 from oriv_mcp.config.settings import settings
@@ -43,6 +45,16 @@ class UploadDatasheetResponse(BaseModel):
     )
 
 
+class UploadConfig(BaseModel):
+    url: str = Field(
+        ..., description="The URL to which the datasheet PDF should be uploaded"
+    )
+    headers: dict[str, str] = Field(
+        default_factory=dict,
+        description="Any additional headers required for the upload request (e.g., authentication)",
+    )
+
+
 # endregion
 
 
@@ -63,7 +75,8 @@ async def component_list() -> list[ComponentWithCategory]:
 
     data_with_category = [
         ComponentWithCategory(
-            category="bldc-single-phase-motor", **item.model_dump(by_alias=True)
+            category=ComponentCategory.BLDC_SINGLE_PHASE_MOTOR,
+            **item.model_dump(by_alias=True),
         )
         for item in data
     ]
@@ -72,21 +85,45 @@ async def component_list() -> list[ComponentWithCategory]:
 
 
 @mcp_app.tool(
-    name="upload_datasheet",
-    description="Upload a datasheet PDF for Component creation",
+    name="upload_datasheet_from_url",
+    description="Upload a datasheet PDF for component creation. Pass a public URL to a PDF file.",
 )
-async def upload_datasheet(
-    filename: str,
-    pdf_bytes: bytes,
+async def upload_datasheet_from_url(
+    pdf_url: str,
 ) -> UploadDatasheetResponse:
+    # Step 1: Fetch PDF bytes from the public URL
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Accept": "application/pdf,*/*",
+        "Referer": pdf_url,
+    }
+    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+        fetch_response = await client.get(pdf_url, headers=headers)
+        fetch_response.raise_for_status()
 
-    url = settings.upload_datasheet_url
+        content_type = fetch_response.headers.get("content-type", "")
+        if "pdf" not in content_type and not pdf_url.lower().endswith(".pdf"):
+            raise ValueError(
+                f"URL does not appear to be a PDF (content-type: {content_type})"
+            )
+
+        pdf_bytes = fetch_response.content
+
+    # Step 2: Derive filename from URL
+    filename = pdf_url.rstrip("/").split("/")[-1]
+    if not filename.lower().endswith(".pdf"):
+        filename += ".pdf"
+
+    # Step 3: POST PDF bytes to backend — URL stays server-side
     files = {"file": (filename, pdf_bytes, "application/pdf")}
+    upload_response = await http_client.post(
+        settings.upload_datasheet_url,
+        files=files,
+        headers={"origin": "localhost"},
+    )
+    upload_response.raise_for_status()
 
-    response = await http_client.post(url, files=files, headers={"origin": "localhost"})
-    response.raise_for_status()
-
-    data = response.json()
+    data = upload_response.json()
     return UploadDatasheetResponse.model_validate(data.get("payload", {}))
 
 
@@ -95,20 +132,22 @@ async def upload_datasheet(
     description="Create a new component by extracting information from an uploaded datasheet",
 )
 async def create_component_from_datasheet(
-    id: str,
-    hash: str,
+    document_id: str,
+    file_hash: str,
     partition_id: str,
 ) -> ComponentWithCategory:
 
     url = settings.create_component_url
 
-    payload = [
-        {
-            "id": id,
-            "hash": hash,
-            "partition_id": partition_id,
-        }
-    ]
+    payload = {
+        "files": [
+            {
+                "id": document_id,
+                "hash": file_hash,
+                "partition_id": partition_id,
+            }
+        ]
+    }
 
     response = await http_client.post(
         url, json=payload, headers={"origin": "localhost"}
@@ -116,7 +155,14 @@ async def create_component_from_datasheet(
     response.raise_for_status()
 
     data = response.json()
-    return ComponentWithCategory.model_validate(data.get("payload", {}))
+    data = ComponentWithCategory.model_validate(data.get("payload", {}))
+
+    data_with_category = ComponentWithCategory(
+        category=ComponentCategory.BLDC_SINGLE_PHASE_MOTOR,
+        **data.model_dump(by_alias=True),
+    )
+
+    return data_with_category
 
 
 # endregion
