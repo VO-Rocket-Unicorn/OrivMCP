@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Literal, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from oriv_mcp.config import settings
+from oriv_mcp.config.constants import ComponentCategory
 from oriv_mcp.server.app import mcp_app
 from oriv_mcp.config.http_config import http_client
 
@@ -133,9 +134,9 @@ class Envelope(StrictBaseModel):
 
 class SimulationPayload(StrictBaseModel):
     category: str = Field(
-        default="bldc-single-phase-motor",
+        default=ComponentCategory.BLDC_SINGLE_PHASE_MOTOR,
         description="Simulation category identifier.",
-        examples=["bldc-single-phase-motor"],
+        examples=[ComponentCategory.BLDC_SINGLE_PHASE_MOTOR],
     )
 
     parameters: Dict[str, Any] = Field(
@@ -185,7 +186,7 @@ class StartCodeGenerationResponse(StrictBaseModel):
     description="Get the simulation schema for a given component category",
 )
 async def get_simulation_schema(
-    category: str = "bldc-single-phase-motor",
+    category: str = ComponentCategory.BLDC_SINGLE_PHASE_MOTOR,
 ) -> SimulationSchema:
     url = settings.get_simulation_schema_url(category)
 
@@ -202,18 +203,17 @@ async def get_simulation_schema(
 )
 async def get_simulation_values_from_component() -> SimulationPayload:
     simulation_values = {
-        "category": "bldc-single-phase-motor",
+        "category": ComponentCategory.BLDC_SINGLE_PHASE_MOTOR,
         "parameters": {
             "waveform_function": "sinusoidal",
             "pole_pairs": 2,
+            "drive_mode": "commutated",
             "resistance": 1.0,
             "inductance": 0.001,
             "back_emf_constant": 0.01,
-            "inertia": 0.00001,
+            "inertia": 1e-5,
             "viscous_friction": 1e-6,
-            # "initial_position": 0.0,
         },
-        "timestamps": [0.0, 0.01, 0.02],
         "coordinates": [
             {
                 "input": [
