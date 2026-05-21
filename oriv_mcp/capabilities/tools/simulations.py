@@ -113,21 +113,6 @@ class CoordinateSample(StrictBaseModel):
 
 
 # =========================================================
-# Envelope
-# =========================================================
-
-
-class Envelope(StrictBaseModel):
-    category: str
-
-    parameters: Dict[str, Any] = Field(default_factory=dict)
-
-    timestamps: List[float] = Field(default_factory=list)
-
-    coordinates: List[Any] = Field(default_factory=list)
-
-
-# =========================================================
 # Runtime Payload
 # =========================================================
 
@@ -144,11 +129,6 @@ class SimulationPayload(StrictBaseModel):
         description="Dynamic simulation parameter values.",
     )
 
-    timestamps: List[float] = Field(
-        default_factory=list,
-        description="Ordered timestamps in seconds.",
-    )
-
     coordinates: List[CoordinateSample] = Field(
         default_factory=list,
         description="Ordered simulation samples.",
@@ -163,13 +143,9 @@ class SimulationPayload(StrictBaseModel):
 class SimulationSchema(StrictBaseModel):
     category: str
 
-    envelope: Envelope
-
     parameters: Dict[str, ParameterDefinition]
 
     coordinates: CoordinateSchema
-
-    example: SimulationPayload
 
 
 class StartCodeGenerationResponse(StrictBaseModel):
@@ -275,7 +251,6 @@ async def start_code_generation(
     category: str,
     parameters: Dict[str, Any],
     coordinates: List[CoordinateSample],
-    timestamps: List[float],
 ) -> StartCodeGenerationResponse:
     url = settings.start_code_generation_url(component_id, simulation_id)
 
@@ -283,7 +258,6 @@ async def start_code_generation(
         "category": category,
         "parameters": parameters,
         "coordinates": [sample.model_dump() for sample in coordinates],
-        "timestamps": timestamps,
     }
 
     response = await http_client.post(
