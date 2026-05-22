@@ -112,7 +112,28 @@ Call `create_component_from_datasheet` using:
 - `partition_id` ← `partition_id` from Step 0A
  
 Store the returned `component_id` and `category` exactly as you would in Step 1.
-Confirm to the user: "New component **{{name}}** has been created (ID: `{{component_id}}`)."
+ 
+### Poll for Component Creation Status
+ 
+Component creation runs asynchronously. After calling `create_component_from_datasheet`,
+poll `check_component_creation_status(component_id)` in a loop until creation finishes.
+ 
+On each poll, surface progress to the user using these response fields:
+- `stepName` — human-readable description of the current step
+- `currentStep` / `totalSteps` — step counter (e.g. "Step 3 of 7")
+- `progressPercentage` — overall completion percentage
+ 
+Continue polling until one of the following is true:
+- `completed` is `true` → creation succeeded, proceed.
+- `inProgress` is `false` AND `completed` is `false` → creation failed or stalled;
+  surface the last `stepName` and percentage to the user and stop the workflow.
+ 
+Use a reasonable polling interval (a few seconds between calls) and avoid spamming
+the user with identical progress updates — only post an update when `stepName`,
+`currentStep`, or `progressPercentage` changes meaningfully.
+ 
+Once `completed` is `true`, confirm to the user:
+"New component **{{componentName}}** has been created (ID: `{{component_id}}`)."
  
 → Skip STEP 1 entirely and proceed directly to STEP 2.
  
