@@ -48,6 +48,11 @@ class Settings(BaseSettings):
         description="Base URL for the CSAS service",
     )
 
+    csas_origin: str = Field(
+        default="oriv_mcp",
+        description="Origin header value to use when making requests to CSAS. Set to 'localhost' if CSAS is running locally without CORS restrictions.",
+    )
+
     def get_simulation_schema_url(self, category: str) -> str:
         """Construct the URL to retrieve the simulation schema for a given category."""
         return f"{self.code_generation_base_url}/simulations/{category}/schema"
@@ -67,6 +72,10 @@ class Settings(BaseSettings):
     def create_component_url(self) -> str:
         """Construct the URL to create a new component."""
         return f"{self.csas_base_url}/api/v1/internal/components/extract"
+
+    def check_component_creation_status_url(self, component_id: str) -> str:
+        """Construct the URL to check the status of component creation."""
+        return f"{self.csas_base_url}/api/v1/internal/components/{component_id}/status"
 
     def create_simulation_url(self, component_id: str) -> str:
         """Construct the URL to create a new simulation for a given component."""

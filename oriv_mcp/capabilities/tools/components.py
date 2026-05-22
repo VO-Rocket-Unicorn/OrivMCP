@@ -28,6 +28,45 @@ class ComponentWithCategory(Component):
 components_adapter = TypeAdapter(list[Component])
 
 
+class CreateComponentFromDatasheet(BaseModel):
+    component_id: str = Field(
+        ..., description="The unique identifier of the created component"
+    )
+    category: str = Field(
+        default=ComponentCategory.BLDC_SINGLE_PHASE_MOTOR,
+        description="The category assigned to the created component",
+    )
+
+
+class ComponentCreationStatusResponse(BaseModel):
+    componentId: str = Field(
+        ..., description="The unique identifier of the component being created"
+    )
+    componentName: str = Field(
+        ..., description="The name of the component being created"
+    )
+    completed: bool = Field(
+        ..., description="Whether the component creation process is completed"
+    )
+    inProgress: bool = Field(
+        ...,
+        description="Whether the component creation process is currently in progress",
+    )
+    currentStep: int = Field(
+        ..., description="The current step number in the component creation process"
+    )
+    totalSteps: int = Field(
+        ..., description="The total number of steps in the component creation process"
+    )
+    message: str = Field(
+        ..., description="A human-readable message describing the current status"
+    )
+    progressPercentage: int = Field(
+        ...,
+        description="The overall progress percentage of the component creation process",
+    )
+
+
 # Upload_datasheet response schema
 class Document(BaseModel):
     documentId: str
@@ -66,7 +105,7 @@ class UploadConfig(BaseModel):
 async def component_list() -> list[ComponentWithCategory]:
     url = settings.component_list_url
 
-    response = await http_client.get(url, headers={"origin": "localhost"})
+    response = await http_client.get(url, headers={"origin": settings.csas_origin})
     response.raise_for_status()
 
     data = response.json()
@@ -119,7 +158,7 @@ async def upload_datasheet_from_url(
     upload_response = await http_client.post(
         settings.upload_datasheet_url,
         files=files,
-        headers={"origin": "localhost"},
+        headers={"origin": settings.csas_origin},
     )
     upload_response.raise_for_status()
 
@@ -135,7 +174,7 @@ async def create_component_from_datasheet(
     document_id: str,
     file_hash: str,
     partition_id: str,
-) -> ComponentWithCategory:
+) -> CreateComponentFromDatasheet:
 
     url = settings.create_component_url
 
@@ -150,19 +189,29 @@ async def create_component_from_datasheet(
     }
 
     response = await http_client.post(
-        url, json=payload, headers={"origin": "localhost"}
+        url, json=payload, headers={"origin": settings.csas_origin}
     )
     response.raise_for_status()
 
     data = response.json()
-    data = ComponentWithCategory.model_validate(data.get("payload", {}))
+    return CreateComponentFromDatasheet.model_validate(data.get("payload", {}))
 
-    data_with_category = ComponentWithCategory(
-        category=ComponentCategory.BLDC_SINGLE_PHASE_MOTOR,
-        **data.model_dump(by_alias=True),
-    )
 
-    return data_with_category
+@mcp_app.tool(
+    name="check_component_creation_status",
+    description="Check the status of component creation from a datasheet upload",
+)
+async def check_component_creation_status(
+    component_id: str,
+) -> ComponentCreationStatusResponse:
+
+    url = settings.check_component_creation_status_url(component_id)
+
+    response = await http_client.post(url, headers={"origin": settings.csas_origin})
+    response.raise_for_status()
+
+    data = response.json()
+    return ComponentCreationStatusResponse.model_validate(data.get("payload", {}))
 
 
 # endregion

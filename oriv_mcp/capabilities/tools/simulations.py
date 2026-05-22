@@ -166,7 +166,7 @@ async def get_simulation_schema(
 ) -> SimulationSchema:
     url = settings.get_simulation_schema_url(category)
 
-    response = await http_client.get(url, headers={"origin": "localhost"})
+    response = await http_client.get(url, headers={"origin": settings.csas_origin})
     response.raise_for_status()
 
     data = response.json()
@@ -233,7 +233,9 @@ async def create_simulation_for_component(
 ) -> str:
     url = settings.create_simulation_url(component_id)
 
-    response = await http_client.post(url, headers={"origin": "localhost"})
+    response = await http_client.post(
+        url, headers={"origin": settings.csas_origin}
+    )
     response.raise_for_status()
 
     data = response.json()
@@ -261,7 +263,7 @@ async def start_code_generation(
     }
 
     response = await http_client.post(
-        url, headers={"origin": "localhost"}, json=payload
+        url, headers={"origin": settings.csas_origin}, json=payload
     )
     response.raise_for_status()
 
@@ -282,7 +284,9 @@ async def get_code_generation_status(
 ) -> Dict[str, Any]:
     url = settings.get_code_generation_status_url(component_id, simulation_id)
 
-    response = await http_client.post(url, headers={"origin": "localhost"})
+    response = await http_client.post(
+        url, headers={"origin": settings.csas_origin}
+    )
     response.raise_for_status()
 
     data = response.json()
