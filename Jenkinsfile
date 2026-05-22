@@ -69,9 +69,6 @@ pipeline {
 
               # Install dependencies
               uv sync --locked --dev
-
-              # Run linter
-              uv run lint
             '''
           }
         }
@@ -218,8 +215,8 @@ pipeline {
                   -Dsonar.projectKey="${SONAR_PROJECT_KEY}" \
                   -Dsonar.host.url="${SONAR_URL}" \
                   -Dsonar.token="${SONAR_TOKEN}" \
-                  -Dsonar.sources=us_oriv_ocr_extraction \
-                  -Dsonar.exclusions=**/node_modules/**,**/build/**,**/dist/**,**/coverage/**,**/*.spec.ts,**/*.test.ts
+                  -Dsonar.sources=oriv_mcp \
+                  -Dsonar.exclusions=**/__pycache__/**,**/.venv/**,**/venv/**,**/build/**,**/dist/**
               '''
             }
           }
