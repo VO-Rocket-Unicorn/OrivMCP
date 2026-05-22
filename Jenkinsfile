@@ -648,7 +648,7 @@ pipeline {
 
                   echo "Deploying to server..."
 
-                  sshpass -p "$SERVER_PASS" ssh -o StrictHostKeyChecking=no $SERVER_USER@$SERVER_IP_DEV << EOF
+                  sshpass -p "$SERVER_PASS" ssh -o StrictHostKeyChecking=no $SERVER_USER@$SERVER_IP << EOF
 
                   set -e
 
