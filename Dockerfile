@@ -5,8 +5,8 @@ ARG BUILD_DATE
 ARG GIT_SHA
 ARG VERSION
 
-LABEL org.opencontainers.image.title="OCR Extraction" \
-    org.opencontainers.image.description="OCR extraction service for US ORIV documents" \
+LABEL org.opencontainers.image.title="ORIV MCP" \
+    org.opencontainers.image.description="Oriv Mcp server" \
     org.opencontainers.image.vendor="Oriv" \
     org.opencontainers.image.created="${BUILD_DATE}" \
     org.opencontainers.image.revision="${GIT_SHA}" \
