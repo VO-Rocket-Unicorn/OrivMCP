@@ -301,12 +301,6 @@ temp/
 *.cache
 .cache/
 
-# Docker
-*.dockerignore
-Dockerfile
-docker-compose*.yml
-.docker/
-
 # Python packaging
 *.egg-info/
 *.egg
