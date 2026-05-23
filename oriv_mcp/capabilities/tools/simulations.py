@@ -154,6 +154,13 @@ class StartCodeGenerationResponse(StrictBaseModel):
     simulation_id: str
 
 
+class SimulationExecutionStatusResponse(StrictBaseModel):
+    component_id: str
+    simulation_id: str
+    isServiceUp: bool
+    frontendSetupGuide: str
+
+
 # region Tools
 
 
@@ -233,9 +240,7 @@ async def create_simulation_for_component(
 ) -> str:
     url = settings.create_simulation_url(component_id)
 
-    response = await http_client.post(
-        url, headers={"origin": settings.csas_origin}
-    )
+    response = await http_client.post(url, headers={"origin": settings.csas_origin})
     response.raise_for_status()
 
     data = response.json()
@@ -274,23 +279,88 @@ async def start_code_generation(
     }
 
 
+# NOTE: This status check will be handled within `start_simulation_execution` and polled until completion, so we don't need to expose it as a separate tool.
+# @mcp_app.tool(
+#     name="get_code_generation_status",
+#     description="Get the current status of code generation for a given simulation",
+# )
+# async def get_code_generation_status(
+#     component_id: str,
+#     simulation_id: str,
+# ) -> Dict[str, Any]:
+#     url = settings.get_code_generation_status_url(component_id, simulation_id)
+
+#     response = await http_client.post(url, headers={"origin": settings.csas_origin})
+#     response.raise_for_status()
+
+#     data = response.json()
+#     return data.get("payload", {})
+
+
 @mcp_app.tool(
-    name="get_code_generation_status",
-    description="Get the current status of code generation for a given simulation",
+    name="start_simulation_execution",
+    description="Start execution of a simulation and return the job ID for monitoring",
 )
-async def get_code_generation_status(
+async def start_simulation_execution(
     component_id: str,
     simulation_id: str,
 ) -> Dict[str, Any]:
-    url = settings.get_code_generation_status_url(component_id, simulation_id)
+    url = settings.start_simulation_execution_url(component_id, simulation_id)
 
     response = await http_client.post(
-        url, headers={"origin": settings.csas_origin}
+        url, headers={"origin": settings.csas_origin}, json={"action": "start"}
     )
     response.raise_for_status()
 
+    message = "Code generation in progress. Try again in a few seconds..."
+
+    if response.status_code == 200:
+        message = "Simulation execution started successfully."
+
+    return {
+        "message": message,
+        "component_id": component_id,
+        "simulation_id": simulation_id,
+    }
+
+
+@mcp_app.tool(
+    name="get_simulation_execution_status",
+    description="Get the current status of simulation execution for a given simulation",
+)
+async def get_simulation_execution_status(
+    component_id: str,
+    simulation_id: str,
+) -> SimulationExecutionStatusResponse:
+    url = settings.get_simulation_execution_status_url(component_id, simulation_id)
+
+    response = await http_client.post(url, headers={"origin": settings.csas_origin})
+    response.raise_for_status()
+
     data = response.json()
-    return data.get("payload", {})
+    return SimulationExecutionStatusResponse.model_validate(data.get("payload", {}))
+
+
+@mcp_app.tool(
+    name="stop_simulation_execution",
+    description="Stop execution of a running simulation",
+)
+async def stop_simulation_execution(
+    component_id: str,
+    simulation_id: str,
+) -> Dict[str, Any]:
+    url = settings.start_simulation_execution_url(component_id, simulation_id)
+
+    response = await http_client.post(
+        url, headers={"origin": settings.csas_origin}, json={"action": "stop"}
+    )
+    response.raise_for_status()
+
+    return {
+        "message": "Simulation execution stopped successfully",
+        "component_id": component_id,
+        "simulation_id": simulation_id,
+    }
 
 
 # endregion
