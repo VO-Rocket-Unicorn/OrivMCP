@@ -6,6 +6,7 @@ from oriv_mcp.config import settings
 from oriv_mcp.config.constants import ComponentCategory
 from oriv_mcp.server.app import mcp_app
 from oriv_mcp.config.http_config import http_client
+from oriv_mcp.config.logger_config import logger
 
 # =========================================================
 # Base Model
@@ -171,13 +172,28 @@ class SimulationExecutionStatusResponse(StrictBaseModel):
 async def get_simulation_schema(
     category: str = ComponentCategory.BLDC_SINGLE_PHASE_MOTOR,
 ) -> SimulationSchema:
-    url = settings.get_simulation_schema_url(category)
+    try:
+        url = settings.get_simulation_schema_url(category)
 
-    response = await http_client.get(url, headers={"origin": settings.csas_origin})
-    response.raise_for_status()
+        response = await http_client.get(url, headers={"origin": settings.csas_origin})
+        response.raise_for_status()
 
-    data = response.json()
-    return SimulationSchema.model_validate(data)
+        data = response.json()
+        result = SimulationSchema.model_validate(data)
+
+        logger.info(
+            msg="Retrieved simulation schema",
+            extras={"category": category},
+        )
+
+        return result
+
+    except Exception:
+        logger.exception(
+            msg="Failed to retrieve simulation schema",
+        )
+
+        raise
 
 
 @mcp_app.tool(
@@ -185,50 +201,65 @@ async def get_simulation_schema(
     description="Get simulation parameter values and coordinate samples for a given component",
 )
 async def get_simulation_values_from_component() -> SimulationPayload:
-    simulation_values = {
-        "category": ComponentCategory.BLDC_SINGLE_PHASE_MOTOR,
-        "parameters": {
-            "waveform_function": "sinusoidal",
-            "pole_pairs": 2,
-            "drive_mode": "commutated",
-            "resistance": 1.0,
-            "inductance": 0.001,
-            "back_emf_constant": 0.01,
-            "inertia": 1e-5,
-            "viscous_friction": 1e-6,
-        },
-        "coordinates": [
-            {
-                "input": [
-                    {"name": "time", "value": 0.0},
-                    {"name": "voltage", "value": 12.0},
-                    {"name": "current", "value": 0.0},
-                    {"name": "position", "value": 0.0},
-                ],
-                "output": [{"name": "speed", "value": 0.0}],
+    try:
+        simulation_values = {
+            "category": ComponentCategory.BLDC_SINGLE_PHASE_MOTOR,
+            "parameters": {
+                "waveform_function": "sinusoidal",
+                "pole_pairs": 2,
+                "drive_mode": "commutated",
+                "resistance": 1.0,
+                "inductance": 0.001,
+                "back_emf_constant": 0.01,
+                "inertia": 1e-5,
+                "viscous_friction": 1e-6,
             },
-            {
-                "input": [
-                    {"name": "time", "value": 0.01},
-                    {"name": "voltage", "value": 12.0},
-                    {"name": "current", "value": 0.45},
-                    {"name": "position", "value": 0.02},
-                ],
-                "output": [{"name": "speed", "value": 4.5}],
-            },
-            {
-                "input": [
-                    {"name": "time", "value": 0.02},
-                    {"name": "voltage", "value": 12.0},
-                    {"name": "current", "value": 0.7},
-                    {"name": "position", "value": 0.06},
-                ],
-                "output": [{"name": "speed", "value": 8.1}],
-            },
-        ],
-    }
+            "coordinates": [
+                {
+                    "input": [
+                        {"name": "time", "value": 0.0},
+                        {"name": "voltage", "value": 12.0},
+                        {"name": "current", "value": 0.0},
+                        {"name": "position", "value": 0.0},
+                    ],
+                    "output": [{"name": "speed", "value": 0.0}],
+                },
+                {
+                    "input": [
+                        {"name": "time", "value": 0.01},
+                        {"name": "voltage", "value": 12.0},
+                        {"name": "current", "value": 0.45},
+                        {"name": "position", "value": 0.02},
+                    ],
+                    "output": [{"name": "speed", "value": 4.5}],
+                },
+                {
+                    "input": [
+                        {"name": "time", "value": 0.02},
+                        {"name": "voltage", "value": 12.0},
+                        {"name": "current", "value": 0.7},
+                        {"name": "position", "value": 0.06},
+                    ],
+                    "output": [{"name": "speed", "value": 8.1}],
+                },
+            ],
+        }
 
-    return SimulationPayload.model_validate(simulation_values)
+        result = SimulationPayload.model_validate(simulation_values)
+
+        logger.info(
+            msg="Retrieved simulation values from component",
+            extras={"category": result.category, "coordinate_count": len(result.coordinates)},
+        )
+
+        return result
+
+    except Exception:
+        logger.exception(
+            msg="Failed to retrieve simulation values from component",
+        )
+
+        raise
 
 
 @mcp_app.tool(
@@ -238,14 +269,28 @@ async def get_simulation_values_from_component() -> SimulationPayload:
 async def create_simulation_for_component(
     component_id: str,
 ) -> str:
-    url = settings.create_simulation_url(component_id)
+    try:
+        url = settings.create_simulation_url(component_id)
 
-    response = await http_client.post(url, headers={"origin": settings.csas_origin})
-    response.raise_for_status()
+        response = await http_client.post(url, headers={"origin": settings.csas_origin})
+        response.raise_for_status()
 
-    data = response.json()
-    simulation_id = data.get("payload", {}).get("simulationId")
-    return simulation_id
+        data = response.json()
+        simulation_id = data.get("payload", {}).get("simulationId")
+
+        logger.info(
+            msg="Simulation created for component",
+            extras={"component_id": component_id, "simulation_id": simulation_id},
+        )
+
+        return simulation_id
+
+    except Exception:
+        logger.exception(
+            msg="Failed to create simulation for component",
+        )
+
+        raise
 
 
 @mcp_app.tool(
@@ -259,24 +304,37 @@ async def start_code_generation(
     parameters: Dict[str, Any],
     coordinates: List[CoordinateSample],
 ) -> StartCodeGenerationResponse:
-    url = settings.start_code_generation_url(component_id, simulation_id)
+    try:
+        url = settings.start_code_generation_url(component_id, simulation_id)
 
-    payload = {
-        "category": category,
-        "parameters": parameters,
-        "coordinates": [sample.model_dump() for sample in coordinates],
-    }
+        payload = {
+            "category": category,
+            "parameters": parameters,
+            "coordinates": [sample.model_dump() for sample in coordinates],
+        }
 
-    response = await http_client.post(
-        url, headers={"origin": settings.csas_origin}, json=payload
-    )
-    response.raise_for_status()
+        response = await http_client.post(
+            url, headers={"origin": settings.csas_origin}, json=payload
+        )
+        response.raise_for_status()
 
-    return {
-        "message": "Code generation started successfully",
-        "component_id": component_id,
-        "simulation_id": simulation_id,
-    }
+        logger.info(
+            msg="Code generation started",
+            extras={"component_id": component_id, "simulation_id": simulation_id, "category": category},
+        )
+
+        return {
+            "message": "Code generation started successfully",
+            "component_id": component_id,
+            "simulation_id": simulation_id,
+        }
+
+    except Exception:
+        logger.exception(
+            msg="Failed to start code generation",
+        )
+
+        raise
 
 
 # NOTE: This status check will be handled within `start_simulation_execution` and polled until completion, so we don't need to expose it as a separate tool.
@@ -305,23 +363,36 @@ async def start_simulation_execution(
     component_id: str,
     simulation_id: str,
 ) -> Dict[str, Any]:
-    url = settings.start_simulation_execution_url(component_id, simulation_id)
+    try:
+        url = settings.start_simulation_execution_url(component_id, simulation_id)
 
-    response = await http_client.post(
-        url, headers={"origin": settings.csas_origin}, json={"action": "start"}
-    )
-    response.raise_for_status()
+        response = await http_client.post(
+            url, headers={"origin": settings.csas_origin}, json={"action": "start"}
+        )
+        response.raise_for_status()
 
-    message = "Code generation in progress. Try again in a few seconds..."
+        message = "Code generation in progress. Try again in a few seconds..."
 
-    if response.status_code == 200:
-        message = "Simulation execution started successfully."
+        if response.status_code == 200:
+            message = "Simulation execution started successfully."
 
-    return {
-        "message": message,
-        "component_id": component_id,
-        "simulation_id": simulation_id,
-    }
+        logger.info(
+            msg="Simulation execution started",
+            extras={"component_id": component_id, "simulation_id": simulation_id},
+        )
+
+        return {
+            "message": message,
+            "component_id": component_id,
+            "simulation_id": simulation_id,
+        }
+
+    except Exception:
+        logger.exception(
+            msg="Failed to start simulation execution",
+        )
+
+        raise
 
 
 @mcp_app.tool(
@@ -332,13 +403,32 @@ async def get_simulation_execution_status(
     component_id: str,
     simulation_id: str,
 ) -> SimulationExecutionStatusResponse:
-    url = settings.get_simulation_execution_status_url(component_id, simulation_id)
+    try:
+        url = settings.get_simulation_execution_status_url(component_id, simulation_id)
 
-    response = await http_client.post(url, headers={"origin": settings.csas_origin})
-    response.raise_for_status()
+        response = await http_client.post(url, headers={"origin": settings.csas_origin})
+        response.raise_for_status()
 
-    data = response.json()
-    return SimulationExecutionStatusResponse.model_validate(data.get("payload", {}))
+        data = response.json()
+        result = SimulationExecutionStatusResponse.model_validate(data.get("payload", {}))
+
+        logger.info(
+            msg="Retrieved simulation execution status",
+            extras={
+                "component_id": component_id,
+                "simulation_id": simulation_id,
+                "is_service_up": result.isServiceUp,
+            },
+        )
+
+        return result
+
+    except Exception:
+        logger.exception(
+            msg="Failed to retrieve simulation execution status",
+        )
+
+        raise
 
 
 @mcp_app.tool(
@@ -349,18 +439,31 @@ async def stop_simulation_execution(
     component_id: str,
     simulation_id: str,
 ) -> Dict[str, Any]:
-    url = settings.start_simulation_execution_url(component_id, simulation_id)
+    try:
+        url = settings.start_simulation_execution_url(component_id, simulation_id)
 
-    response = await http_client.post(
-        url, headers={"origin": settings.csas_origin}, json={"action": "stop"}
-    )
-    response.raise_for_status()
+        response = await http_client.post(
+            url, headers={"origin": settings.csas_origin}, json={"action": "stop"}
+        )
+        response.raise_for_status()
 
-    return {
-        "message": "Simulation execution stopped successfully",
-        "component_id": component_id,
-        "simulation_id": simulation_id,
-    }
+        logger.info(
+            msg="Simulation execution stopped",
+            extras={"component_id": component_id, "simulation_id": simulation_id},
+        )
+
+        return {
+            "message": "Simulation execution stopped successfully",
+            "component_id": component_id,
+            "simulation_id": simulation_id,
+        }
+
+    except Exception:
+        logger.exception(
+            msg="Failed to stop simulation execution",
+        )
+
+        raise
 
 
 # endregion
