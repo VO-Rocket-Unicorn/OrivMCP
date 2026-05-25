@@ -147,41 +147,62 @@ Ask the user to pick one. Store the selected `component_id` and `category`.
 ---
  
 ## STEP 2 — Fetch Schema
- 
+
 Call `get_simulation_schema` with the component's `category`.
-Store the returned `category`, `parameters`, `timestamps`, and `coordinates` schema.
+Store the returned `category`, `parameters`, and `coordinates` schema.
 Do NOT ask the user anything yet — just store this for comparison in Step 3.
- 
+
 ## STEP 3 — Collect Parameters
- 
+
 Call `get_simulation_values_from_component` to get prefilled values.
- 
+
 Then do a diff:
 - **Prefilled** = parameters returned by `get_simulation_values_from_component`
 - **Missing** = parameters present in the schema (from Step 2) but absent from the values response
- 
+
 Present the prefilled values to the user for review.
 For each MISSING parameter (schema has it, values response does not), ask the user
 to provide a value interactively. Use the schema's `description`, `default`, and `enum`
 (if present) to guide the question. If the user skips, fall back to the schema default.
- 
+
+**CRITICAL — Parameter value rules (enforced before any API call):**
+- The backend only accepts parameter values of type: `string`, `number`, `boolean`, or `number[]`.
+- **NEVER include a parameter whose value is `null`, `undefined`, or missing** — omit it from
+  the payload entirely. This applies to schema defaults too: if a default is `null`, skip that key.
+- After merging prefilled + user-provided values, filter the final `parameters` object so that
+  only keys with valid non-null, non-undefined values are included.
+
 ## STEP 4 — Collect Coordinate Data
- 
+
 From the schema's `coordinates.input` and `coordinates.output`, list the exact column
 names the user needs in their spreadsheet (mark which are required vs optional).
 Ask the user to upload a spreadsheet with those columns.
 Once uploaded, extract the rows and confirm the `timestamps` array from the `time` column.
- 
+
+**CRITICAL — Coordinate value rules:**
+- Every `value` field in both `input` and `output` coordinate objects must be a plain `number`.
+- **NEVER include a coordinate entry whose value is `null`, `undefined`, or non-numeric** —
+  drop the entire row if any required column is missing or invalid.
+- Validate all rows after extraction; only pass clean rows to the API.
+
 ## STEP 5 — Confirm
- 
+
 Show a full summary before proceeding:
 - Component name and ID
 - Origin: "Existing component" or "Created from datasheet: {{filename}}"
-- All parameters (prefilled + user-provided)
+- All parameters that will be sent (prefilled + user-provided, null/undefined keys excluded)
 - Timestamps (first, last, count)
 - Sample coordinate rows (show 2–3 rows as a preview)
- 
+
 Ask the user to confirm ("yes / looks good") before moving to generation.
+
+**Pre-flight check before calling `start_code_generation`:**
+Build the final payload and assert:
+1. `parameters` — every value is `string | number | boolean | number[]`; no `null`, no `undefined`.
+   Remove any key that fails this check rather than sending it.
+2. `coordinates` — every `input` and `output` entry has a `name` (string) and `value` (number).
+   Drop any row where this does not hold.
+Only proceed to generation once the payload passes this check.
  
 ## STEP 6 — Generate & Deploy
  
