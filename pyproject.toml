@@ -30,8 +30,6 @@ lib-oriv-telemetry = { path = "deps/lib-oriv-telemetry" }
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-
 [tool.ruff]
-line-length = 500
 exclude = [".git", "__pycache__", ".venv", "build", "dist"]
 ignore = ["W291", "W293", "E303", "E225", "F403"]

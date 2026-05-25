@@ -1,6 +1,8 @@
 from pydantic import Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from lib_oriv_telemetry.enums import EnvironmentEnum
+
 
 class Settings(BaseSettings):
     """
@@ -29,7 +31,13 @@ class Settings(BaseSettings):
     )
 
     # ---- environment ----
-    env: str = Field(default="development", description="Application environment")
+    environment: EnvironmentEnum = Field(
+        default=EnvironmentEnum.PRODUCTION,
+        description="Application environment (e.g., development, staging, production)",
+    )
+    log_file_path: str = Field(
+        default="logs", description="File path for application logs"
+    )
 
     allowed_hosts: list[str] = Field(
         default_factory=list, description="List of allowed hosts for CORS"
@@ -51,6 +59,19 @@ class Settings(BaseSettings):
     csas_origin: str = Field(
         default="oriv_mcp",
         description="Origin header value to use when making requests to CSAS. Set to 'localhost' if CSAS is running locally without CORS restrictions.",
+    )
+
+    log_endpoint: str = Field(
+        ...,
+        description="Endpoint URL for sending logs",
+    )
+    trace_endpoint: str = Field(
+        ...,
+        description="Endpoint URL for sending trace data",
+    )
+    metric_endpoint: str = Field(
+        ...,
+        description="Endpoint URL for sending metric data",
     )
 
     def get_simulation_schema_url(self, category: str) -> str:
@@ -105,4 +126,4 @@ class Settings(BaseSettings):
 
 
 # singleton instance
-settings = Settings()
+settings = Settings()  # type: ignore
