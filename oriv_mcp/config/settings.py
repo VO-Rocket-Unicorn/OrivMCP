@@ -61,15 +61,15 @@ class Settings(BaseSettings):
         description="Origin header value to use when making requests to CSAS. Set to 'localhost' if CSAS is running locally without CORS restrictions.",
     )
 
-    log_endpoint: str = Field(
+    otel_url: str = Field(
         ...,
         description="Endpoint URL for sending logs",
     )
-    trace_endpoint: str = Field(
+    trace_url: str = Field(
         ...,
         description="Endpoint URL for sending trace data",
     )
-    metric_endpoint: str = Field(
+    metric_url: str = Field(
         ...,
         description="Endpoint URL for sending metric data",
     )
@@ -123,6 +123,24 @@ class Settings(BaseSettings):
     ) -> str:
         """Construct the URL to get simulation execution status for a given simulation."""
         return f"{self.csas_base_url}/api/v1/internal/components/{component_id}/simulations/{simulation_id}/execution/status"
+
+    @computed_field
+    @property
+    def otel_logs_url(self) -> str:
+        """Otel logs url"""
+        return f"{self.otel_url}/v1/logs"
+
+    @computed_field
+    @property
+    def otel_traces_url(self) -> str:
+        """Otel traces url"""
+        return f"{self.otel_url}/v1/traces"
+
+    @computed_field
+    @property
+    def otel_metrics_url(self) -> str:
+        """Otel metrics url"""
+        return f"{self.otel_url}/v1/metrics"
 
 
 # singleton instance
