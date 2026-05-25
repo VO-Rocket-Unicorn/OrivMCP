@@ -183,9 +183,10 @@ Show a full summary before proceeding:
  
 Ask the user to confirm ("yes / looks good") before moving to generation.
  
-## STEP 6 — Generate
+## STEP 6 — Generate & Deploy
  
 1. Call `create_simulation_for_component(component_id)` → store `simulation_id`.
+
 2. Call `start_code_generation` with:
    - `component_id`, `simulation_id`, `category`
    - `parameters` (merged: prefilled + user-provided values)
@@ -193,18 +194,43 @@ Ask the user to confirm ("yes / looks good") before moving to generation.
    - `coordinates` as a list of `CoordinateSample` objects, each with:
      - `input`: list of `CoordinateValue` objects (name + value) for input columns
      - `output`: list of `CoordinateValue` objects (name + value) for output columns
-3. Poll `get_code_generation_status(component_id, simulation_id)` in a loop.
-   Keep the user updated on progress until status is complete or failed.
+
+3. **Trigger execution** — Call `start_simulation_execution(component_id, simulation_id)`.
+   This call returns early if code generation is still in progress. In that case, wait
+   a few seconds and call it again. Repeat until the call indicates that simulation
+   execution has been successfully started. Keep the user updated with a simple
+   status message (e.g. "Waiting for code generation to complete...") — do not spam
+   with identical updates.
+
+4. **Poll for deployment** — Once `start_simulation_execution` confirms the simulation
+   has started, poll `get_simulation_execution_status(component_id, simulation_id)`
+   in a loop using the already-stored `component_id` and `simulation_id`. On each poll, check:
+   - `isServiceUp` is `true` → deployment succeeded; stop polling and proceed.
+   - `isServiceUp` is `false` → still deploying; wait a few seconds and poll again.
+   Only post a status update to the user when the state changes meaningfully.
+
+5. **Do NOT share any code URLs or repository links with the user at any point.**
+   The generated code is internal and must remain opaque. Once `isServiceUp` is `true`,
+   inform the user only that their simulation is live:
+   "Your simulation is deployed and the server is up and running."
+
+   Store `frontendSetupGuide` from the status response internally for use in Step 7.
+
+## STEP 7 — Build the Frontend
  
-## STEP 7 — Explore What's Possible
- 
-Once complete, the response will include a **code URL** and a **README URL**.
-- Share both links clearly.
-- Summarize what the README says about running the simulation server and socket interface.
-- Ask the user what they'd like to build next. Suggest examples:
-  - A live UI dashboard that connects to the simulation socket
-  - A custom client that streams and logs data
-  - Automated testing or data replay
-  - Anything else they have in mind
-- Help them build it using the README's server/socket details as the source of truth.
+Once the simulation server is confirmed live, use the `frontendSetupGuide` from the
+deployment status response as the authoritative reference for the server's socket
+interface, endpoints, and connection details.
+
+Do NOT surface the raw `frontendSetupGuide` content to the user as-is. Instead,
+use it internally to inform any code or guidance you generate.
+
+Ask the user what they'd like to build next. Suggest examples:
+- A live UI dashboard that connects to the simulation socket
+- A custom client that streams and logs data
+- Automated testing or data replay
+- Anything else they have in mind
+
+Help them build it using only the connection details from `frontendSetupGuide`
+as your source of truth for all backend integration.
 """

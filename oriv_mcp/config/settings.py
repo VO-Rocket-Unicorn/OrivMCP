@@ -91,6 +91,18 @@ class Settings(BaseSettings):
         """Construct the URL to get code generation status for a given simulation."""
         return f"{self.csas_base_url}/api/v1/internal/components/{component_id}/simulations/{simulation_id}/code/status"
 
+    def start_simulation_execution_url(
+        self, component_id: str, simulation_id: str
+    ) -> str:
+        """Construct the URL to start simulation execution for a given simulation."""
+        return f"{self.csas_base_url}/api/v1/internal/components/{component_id}/simulations/{simulation_id}/execute"
+
+    def get_simulation_execution_status_url(
+        self, component_id: str, simulation_id: str
+    ) -> str:
+        """Construct the URL to get simulation execution status for a given simulation."""
+        return f"{self.csas_base_url}/api/v1/internal/components/{component_id}/simulations/{simulation_id}/execution/status"
+
 
 # singleton instance
 settings = Settings()
