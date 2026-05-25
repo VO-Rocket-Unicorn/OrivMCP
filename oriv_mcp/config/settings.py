@@ -65,14 +65,6 @@ class Settings(BaseSettings):
         ...,
         description="Endpoint URL for sending logs",
     )
-    trace_url: str = Field(
-        ...,
-        description="Endpoint URL for sending trace data",
-    )
-    metric_url: str = Field(
-        ...,
-        description="Endpoint URL for sending metric data",
-    )
 
     def get_simulation_schema_url(self, category: str) -> str:
         """Construct the URL to retrieve the simulation schema for a given category."""
