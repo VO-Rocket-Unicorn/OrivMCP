@@ -3,7 +3,7 @@ name = "oriv_mcp"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<4.0"
 
 dependencies = [
     "fastapi>=0.136.1",
@@ -14,6 +14,7 @@ dependencies = [
     "pydantic-settings>=2.14.0",
     "scipy>=1.17.1",
     "uvicorn>=0.46.0",
+    "lib-oriv-telemetry",
 ]
 
 [project.scripts]
@@ -21,6 +22,9 @@ app = "bin.runner:run"
 
 [dependency-groups]
 dev = ["ruff>=0.15.12"]
+
+[tool.uv.sources]
+lib-oriv-telemetry = { path = "deps/lib-oriv-telemetry" }
 
 [build-system]
 requires = ["hatchling"]
