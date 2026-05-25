@@ -3,7 +3,7 @@ name = "lib-oriv-telemetry"
 version = "0.1.0"
 description = "Logging and OpenTelemetry tracing/metrics utilities for Oriv services."
 readme = "README.md"
-requires-python = ">=3.14,<4.0"
+requires-python = ">=3.12,<4.0"
 
 dependencies = [
     "pydantic>=2.0",
