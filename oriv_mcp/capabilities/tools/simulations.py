@@ -183,7 +183,7 @@ async def get_simulation_schema(
 
         logger.info(
             msg="Retrieved simulation schema",
-            extras={"category": category},
+            extra={"category": category},
         )
 
         return result
@@ -249,7 +249,7 @@ async def get_simulation_values_from_component() -> SimulationPayload:
 
         logger.info(
             msg="Retrieved simulation values from component",
-            extras={"category": result.category, "coordinate_count": len(result.coordinates)},
+            extra={"category": result.category, "coordinate_count": len(result.coordinates)},
         )
 
         return result
@@ -280,7 +280,7 @@ async def create_simulation_for_component(
 
         logger.info(
             msg="Simulation created for component",
-            extras={"component_id": component_id, "simulation_id": simulation_id},
+            extra={"component_id": component_id, "simulation_id": simulation_id},
         )
 
         return simulation_id
@@ -320,7 +320,7 @@ async def start_code_generation(
 
         logger.info(
             msg="Code generation started",
-            extras={"component_id": component_id, "simulation_id": simulation_id, "category": category},
+            extra={"component_id": component_id, "simulation_id": simulation_id, "category": category},
         )
 
         return {
@@ -378,7 +378,7 @@ async def start_simulation_execution(
 
         logger.info(
             msg="Simulation execution started",
-            extras={"component_id": component_id, "simulation_id": simulation_id},
+            extra={"component_id": component_id, "simulation_id": simulation_id},
         )
 
         return {
@@ -414,7 +414,7 @@ async def get_simulation_execution_status(
 
         logger.info(
             msg="Retrieved simulation execution status",
-            extras={
+            extra={
                 "component_id": component_id,
                 "simulation_id": simulation_id,
                 "is_service_up": result.isServiceUp,
@@ -449,7 +449,7 @@ async def stop_simulation_execution(
 
         logger.info(
             msg="Simulation execution stopped",
-            extras={"component_id": component_id, "simulation_id": simulation_id},
+            extra={"component_id": component_id, "simulation_id": simulation_id},
         )
 
         return {

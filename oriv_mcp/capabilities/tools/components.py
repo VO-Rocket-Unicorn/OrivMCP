@@ -127,7 +127,7 @@ async def component_list() -> list[ComponentWithCategory]:
 
         logger.info(
             msg="Retrieved components from backend",
-            extras={"component_count": len(data_with_category)},
+            extra={"component_count": len(data_with_category)},
         )
 
         return data_with_category
@@ -185,7 +185,7 @@ async def upload_datasheet_from_url(
 
         logger.info(
             msg="Datasheet uploaded successfully",
-            extras={"document_id": result.document.documentId, "reuse": result.reuse},
+            extra={"document_id": result.document.documentId, "reuse": result.reuse},
         )
 
         return result
@@ -230,7 +230,7 @@ async def create_component_from_datasheet(
 
         logger.info(
             msg="Component creation initiated from datasheet",
-            extras={"component_id": result.component_id, "category": result.category},
+            extra={"component_id": result.component_id, "category": result.category},
         )
 
         return result
@@ -261,7 +261,7 @@ async def check_component_creation_status(
 
         logger.info(
             msg="Retrieved component creation status",
-            extras={
+            extra={
                 "component_id": component_id,
                 "completed": result.completed,
                 "progress_percentage": result.progressPercentage,
