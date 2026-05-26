@@ -1,4 +1,5 @@
 from pathlib import Path
+import logging
 
 from pydantic import Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -41,6 +42,16 @@ class Settings(BaseSettings):
         default_factory=lambda: str(Path(__file__).resolve().parents[2] / "logs"),
         description="File path for application logs",
     )
+
+    @computed_field
+    @property
+    def log_level(self) -> int:
+        """Determine log level based on environment."""
+        return (
+            logging.DEBUG
+            if self.environment == EnvironmentEnum.SANDBOX
+            else logging.INFO
+        )
 
     allowed_hosts: list[str] = Field(
         default_factory=list, description="List of allowed hosts for CORS"
