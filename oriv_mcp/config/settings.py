@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from pydantic import Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -36,7 +38,8 @@ class Settings(BaseSettings):
         description="Application environment (e.g., development, staging, production)",
     )
     log_file_path: str = Field(
-        default="logs", description="File path for application logs"
+        default_factory=lambda: str(Path(__file__).resolve().parents[2] / "logs"),
+        description="File path for application logs",
     )
 
     allowed_hosts: list[str] = Field(
