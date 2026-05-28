@@ -14,8 +14,12 @@ from pydantic import BaseModel, ConfigDict, Field
 class KeyMaterial(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
 
-    private_key: RSAPrivateKey = Field(..., description="RSA private key for signing JWTs")
-    public_key: RSAPublicKey = Field(..., description="RSA public key for verifying JWTs")
+    private_key: RSAPrivateKey = Field(
+        ..., description="RSA private key for signing JWTs"
+    )
+    public_key: RSAPublicKey = Field(
+        ..., description="RSA public key for verifying JWTs"
+    )
     private_pem: bytes = Field(..., description="PEM-encoded private key bytes")
     public_pem: bytes = Field(..., description="PEM-encoded public key bytes")
     kid: str = Field(..., description="Stable key id derived from the public key bytes")
