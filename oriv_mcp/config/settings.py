@@ -60,6 +60,20 @@ class Settings(BaseSettings):
         default_factory=list, description="List of allowed origins for CORS"
     )
 
+    # ---- auth ----
+    auth_base_url: str = Field(
+        default="http://localhost:8000",
+        description="Public URL of this server (JWT 'iss' and 'aud' claim; same process hosts auth and MCP).",
+    )
+    access_token_ttl_seconds: int = Field(default=3600)
+    auth_code_ttl_seconds: int = Field(default=300)
+    login_session_ttl_seconds: int = Field(default=600)
+    supported_scopes: list[str] = Field(default_factory=lambda: ["read", "write"])
+    keys_dir: Path = Field(
+        default_factory=lambda: Path(__file__).resolve().parents[2] / "keys",
+        description="Directory holding the RSA keypair PEM files.",
+    )
+
     # ---- urls ----
     code_generation_base_url: str = Field(
         ...,
