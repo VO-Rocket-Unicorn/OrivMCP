@@ -29,10 +29,10 @@ def ensure_path_exists(path: Path, is_file: bool = False) -> Path:
 
 def get_repo_root() -> Path:
     """
-    Walk up from the current working directory to find the main repository root
+    Walk up from this file's location to find the main repository root
     containing pyproject.toml. Ignores pyproject.toml files in subtrees like lib_oriv_tools.
     """
-    repo_root = Path.cwd()
+    repo_root = Path(__file__).resolve()
     while repo_root != repo_root.parent:
         pyproject = repo_root / "pyproject.toml"
         if pyproject.exists():
