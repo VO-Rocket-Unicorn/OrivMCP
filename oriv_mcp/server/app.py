@@ -3,6 +3,7 @@ from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import (
     TransportSecuritySettings,
 )
+from pydantic import AnyHttpUrl
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
@@ -30,8 +31,8 @@ mcp_app = FastMCP(
     ),
     lifespan=lifespan,
     auth=AuthSettings(
-        issuer_url=settings.auth_base_url,
-        resource_server_url=settings.auth_base_url,
+        issuer_url=AnyHttpUrl(settings.auth_base_url),
+        resource_server_url=AnyHttpUrl(settings.auth_base_url),
         client_registration_options=ClientRegistrationOptions(
             enabled=True,
             valid_scopes=settings.supported_scopes,
