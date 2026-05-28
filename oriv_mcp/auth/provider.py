@@ -38,17 +38,19 @@ class OrivOAuthProvider(
         return clients.get(client_id)
 
     async def register_client(self, client_info: OAuthClientInformationFull) -> None:
-        clients[client_info.client_id] = client_info  # type: ignore
+        assert client_info.client_id is not None
+        clients[client_info.client_id] = client_info
 
     async def authorize(
         self,
         client: OAuthClientInformationFull,
         params: AuthorizationParams,
     ) -> str:
+        assert client.client_id is not None
         session_id = secrets.token_urlsafe(24)
         login_sessions[session_id] = LoginSession(
             session_id=session_id,
-            client_id=client.client_id,  # type: ignore
+            client_id=client.client_id,
             redirect_uri=params.redirect_uri,
             redirect_uri_provided_explicitly=params.redirect_uri_provided_explicitly,
             code_challenge=params.code_challenge,
@@ -74,7 +76,7 @@ class OrivOAuthProvider(
             expires_at=stored.expires_at,
             client_id=stored.client_id,
             code_challenge=stored.code_challenge,
-            redirect_uri=stored.redirect_uri,  # type: ignore
+            redirect_uri=stored.redirect_uri,
             redirect_uri_provided_explicitly=stored.redirect_uri_provided_explicitly,
             resource=stored.resource,
         )
@@ -90,11 +92,12 @@ class OrivOAuthProvider(
                 error="invalid_grant",
                 error_description="authorization code already used",
             )
+        assert client.client_id is not None
 
-        token, _exp = mint_access_token(
+        token, _ = mint_access_token(
             key_material=self._key_material,
             subject=stored.subject,
-            client_id=client.client_id,  # type: ignore
+            client_id=client.client_id,
             scopes=stored.scopes,
             issuer=settings.auth_base_url,
             audience=settings.auth_base_url,
