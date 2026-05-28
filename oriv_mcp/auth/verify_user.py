@@ -7,6 +7,8 @@ Nothing else in the codebase should need to change.
 
 from pydantic import BaseModel, Field
 
+from oriv_mcp.config import settings
+
 
 class User(BaseModel):
     subject: str = Field(..., description="Unique identifier for the user")
@@ -18,6 +20,6 @@ class User(BaseModel):
 
 async def verify_user(username: str, password: str) -> User | None:
     """Return a User on valid credentials, None otherwise."""
-    if username == "admin" and password == "admin":
-        return User(subject="admin", scopes=["read", "write"])
+    if username == settings.admin_username and password == settings.admin_password:
+        return User(subject=settings.admin_username, scopes=["read", "write"])
     return None

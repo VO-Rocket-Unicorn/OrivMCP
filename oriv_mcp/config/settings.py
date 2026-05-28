@@ -94,6 +94,12 @@ class Settings(BaseSettings):
         description="Endpoint URL for sending logs",
     )
 
+    # --- Admin Credentials
+    admin_username: str = Field(..., description="Username for admin authentication")
+
+    admin_password: str = Field(..., description="Password for admin authentication")
+
+    # --- Computed URLs ---
     def get_simulation_schema_url(self, category: str) -> str:
         """Construct the URL to retrieve the simulation schema for a given category."""
         return f"{self.code_generation_base_url}/simulations/{category}/schema"

@@ -16,6 +16,7 @@ dependencies = [
     "uvicorn>=0.46.0",
     "lib-oriv-telemetry",
     "jinja2>=3.1.6",
+    "pyjwt>=2.13.0",
 ]
 
 [project.scripts]
