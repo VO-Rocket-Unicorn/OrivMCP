@@ -2,22 +2,23 @@ import base64
 import hashlib
 import secrets
 import time
-from dataclasses import dataclass
 from pathlib import Path
 
 import jwt
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
+from pydantic import BaseModel, ConfigDict, Field
 
 
-@dataclass(frozen=True)
-class KeyMaterial:
-    private_key: RSAPrivateKey
-    public_key: RSAPublicKey
-    private_pem: bytes
-    public_pem: bytes
-    kid: str
+class KeyMaterial(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
+
+    private_key: RSAPrivateKey = Field(..., description="RSA private key for signing JWTs")
+    public_key: RSAPublicKey = Field(..., description="RSA public key for verifying JWTs")
+    private_pem: bytes = Field(..., description="PEM-encoded private key bytes")
+    public_pem: bytes = Field(..., description="PEM-encoded public key bytes")
+    kid: str = Field(..., description="Stable key id derived from the public key bytes")
 
 
 def load_or_generate_keypair(keys_dir: Path) -> KeyMaterial:
@@ -26,10 +27,19 @@ def load_or_generate_keypair(keys_dir: Path) -> KeyMaterial:
     public_pem_path = keys_dir / "public.pem"
 
     if private_pem_path.exists() and public_pem_path.exists():
-        private_key = serialization.load_pem_private_key(
+        loaded_private = serialization.load_pem_private_key(
             private_pem_path.read_bytes(), password=None
         )
-        public_key = serialization.load_pem_public_key(public_pem_path.read_bytes())
+        loaded_public = serialization.load_pem_public_key(public_pem_path.read_bytes())
+        if not isinstance(loaded_private, RSAPrivateKey) or not isinstance(
+            loaded_public, RSAPublicKey
+        ):
+            raise RuntimeError(
+                f"Expected RSA keypair in {keys_dir}, got "
+                f"{type(loaded_private).__name__}/{type(loaded_public).__name__}"
+            )
+        private_key: RSAPrivateKey = loaded_private
+        public_key: RSAPublicKey = loaded_public
     else:
         private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
         public_key = private_key.public_key()

@@ -5,13 +5,15 @@ Phase 2: rewrite the body of `verify_user` to delegate to Google/Microsoft OAuth
 Nothing else in the codebase should need to change.
 """
 
-from dataclasses import dataclass
+from pydantic import BaseModel, Field
 
 
-@dataclass(frozen=True)
-class User:
-    subject: str
-    scopes: list[str]
+class User(BaseModel):
+    subject: str = Field(..., description="Unique identifier for the user")
+    scopes: list[str] = Field(
+        default_factory=list,
+        description="List of scopes/permissions associated with the user",
+    )
 
 
 async def verify_user(username: str, password: str) -> User | None:

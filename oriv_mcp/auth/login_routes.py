@@ -29,7 +29,7 @@ async def login_get(request: Request) -> Response:
 
 async def login_post(request: Request) -> Response:
     form = await request.form()
-    session_id = form.get("session")
+    session_id = str(form.get("session") or "")
     username = str(form.get("username") or "")
     password = str(form.get("password") or "")
 
