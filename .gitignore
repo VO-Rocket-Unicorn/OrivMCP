@@ -761,3 +761,6 @@ ehthumbs.db
 !.browserslistrc
 !.postcssrc
 !.env.example
+
+# claude
+.claude
