@@ -30,16 +30,16 @@ mcp_app = FastMCP(
         allowed_origins=settings.allowed_origins,
     ),
     lifespan=lifespan,
-    auth=AuthSettings(
-        issuer_url=AnyHttpUrl(settings.auth_base_url),
-        resource_server_url=AnyHttpUrl(f"{settings.auth_base_url.rstrip('/')}/mcp"),
-        client_registration_options=ClientRegistrationOptions(
-            enabled=True,
-            valid_scopes=settings.supported_scopes,
-            default_scopes=settings.supported_scopes,
-        ),
-        required_scopes=["read"],
-    ),
+    # auth=AuthSettings(
+    #     issuer_url=AnyHttpUrl(settings.auth_base_url),
+    #     resource_server_url=AnyHttpUrl(f"{settings.auth_base_url.rstrip('/')}/mcp"),
+    #     client_registration_options=ClientRegistrationOptions(
+    #         enabled=True,
+    #         valid_scopes=settings.supported_scopes,
+    #         default_scopes=settings.supported_scopes,
+    #     ),
+    #     required_scopes=["read"],
+    # ),
     auth_server_provider=_provider,
 )
 

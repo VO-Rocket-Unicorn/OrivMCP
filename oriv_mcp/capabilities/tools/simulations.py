@@ -249,7 +249,10 @@ async def get_simulation_values_from_component() -> SimulationPayload:
 
         logger.info(
             msg="Retrieved simulation values from component",
-            extra={"category": result.category, "coordinate_count": len(result.coordinates)},
+            extra={
+                "category": result.category,
+                "coordinate_count": len(result.coordinates),
+            },
         )
 
         return result
@@ -320,14 +323,18 @@ async def start_code_generation(
 
         logger.info(
             msg="Code generation started",
-            extra={"component_id": component_id, "simulation_id": simulation_id, "category": category},
+            extra={
+                "component_id": component_id,
+                "simulation_id": simulation_id,
+                "category": category,
+            },
         )
 
-        return {
-            "message": "Code generation started successfully",
-            "component_id": component_id,
-            "simulation_id": simulation_id,
-        }
+        return StartCodeGenerationResponse(
+            message="Code generation started successfully",
+            component_id=component_id,
+            simulation_id=simulation_id,
+        )
 
     except Exception:
         logger.exception(
@@ -410,7 +417,9 @@ async def get_simulation_execution_status(
         response.raise_for_status()
 
         data = response.json()
-        result = SimulationExecutionStatusResponse.model_validate(data.get("payload", {}))
+        result = SimulationExecutionStatusResponse.model_validate(
+            data.get("payload", {})
+        )
 
         logger.info(
             msg="Retrieved simulation execution status",
