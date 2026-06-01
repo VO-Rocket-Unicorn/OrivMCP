@@ -798,44 +798,56 @@ pipeline {
           ).trim()
 
           sh """
-            curl -H "Content-Type: application/json" \\
-                -d '{
-                      "type": "message",
-                      "attachments": [{
-                        "contentType": "application/vnd.microsoft.card.adaptive",
-                        "content": {
-                          "\$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
-                          "type": "AdaptiveCard",
-                          "version": "1.4",
-                          "body": [{
-                            "type": "TextBlock",
-                            "text": "${emoji} Build & Deploy- ${status}",
-                            "weight": "Bolder",
-                            "size": "Large",
-                            "color": "${color}"
-                          },
-                            {
-                              "type": "FactSet",
-                              "facts": [
-                                { "title": "Job:", "value": "${env.JOB_NAME}" },
-                                { "title": "Build #:", "value": "${env.BUILD_NUMBER}" },
-                                { "title": "Image:", "value": "${FULL_IMAGE}" },
-                                { "title": "Triggered By:", "value": "${env.TRIGGERED_BY}" },
-                                { "title": "Branch:", "value": "${env.BRANCH_NAME}" },
-                                { "title": "Repository:", "value": "${env.GIT_URL}" },
-                                { "title": "Completed At:", "value": "${timestamp}" }
-                                  ]
-                            }
-                          ],
-                          "actions": [{
-                            "type": "Action.OpenUrl",
-                            "title": "View Build",
-                            "url": "${env.BUILD_URL}"
-                          }]
-                        }
-                      }]
-                    }' \\
-                "$TEAMS_WEBHOOK"
+            echo "=== Sending Teams Notification ==="
+
+            RESPONSE=\$(curl -s \
+              -o teams-response.txt \
+              -w "HTTP_CODE:%{http_code}" \
+              -H "Content-Type: application/json" \
+              -d '{
+                    "type": "message",
+                    "attachments": [{
+                      "contentType": "application/vnd.microsoft.card.adaptive",
+                      "content": {
+                        "\$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                        "type": "AdaptiveCard",
+                        "version": "1.4",
+                        "body": [{
+                          "type": "TextBlock",
+                          "text": "${emoji} Build & Deploy - ${status}",
+                          "weight": "Bolder",
+                          "size": "Large",
+                          "color": "${color}"
+                        },
+                        {
+                          "type": "FactSet",
+                          "facts": [
+                            { "title": "Job:", "value": "${env.JOB_NAME}" },
+                            { "title": "Build #:", "value": "${env.BUILD_NUMBER}" },
+                            { "title": "Image:", "value": "${FULL_IMAGE}" },
+                            { "title": "Triggered By:", "value": "${env.TRIGGERED_BY}" },
+                            { "title": "Branch:", "value": "${env.BRANCH_NAME}" },
+                            { "title": "Repository:", "value": "${env.GIT_URL}" },
+                            { "title": "Completed At:", "value": "${timestamp}" }
+                          ]
+                        }],
+                        "actions": [{
+                          "type": "Action.OpenUrl",
+                          "title": "View Build",
+                          "url": "${env.BUILD_URL}"
+                        }]
+                      }
+                    }]
+                  }' \
+              "$TEAMS_WEBHOOK")
+
+            echo "=== Teams Response Body ==="
+            cat teams-response.txt || true
+
+            echo "=== Teams HTTP Response ==="
+            echo "\$RESPONSE"
+
+            echo "=== Teams Notification Completed ==="
           """
         }
     }
