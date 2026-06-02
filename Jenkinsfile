@@ -762,94 +762,166 @@ pipeline {
     }
   }
 
-  post {
-    always {
-        sh 'docker rmi ${FULL_IMAGE} || true'
-        sh '''
-          echo "Cleaning Jenkins docker garbage..."
+post {
+always {
 
-          docker ps -aq --filter "label=jenkins" | xargs -r docker rm -f || true
+```
+    sh '''
+        docker rmi ${FULL_IMAGE} || true
 
-          docker container prune -f || true
-          docker image prune -af || true
-          docker volume prune -f || true
-          docker builder prune -af || true
+        echo "Cleaning Jenkins docker garbage..."
 
-          docker buildx rm ${BUILDER} || true
-        '''
+        docker ps -aq --filter "label=jenkins" | xargs -r docker rm -f || true
 
-        sh 'docker rmi ${FULL_IMAGE_VERSION} || true'
-        sh 'docker rmi ${FULL_IMAGE}:latest || true'
+        docker container prune -f || true
+        docker image prune -af || true
+        docker volume prune -f || true
+        docker builder prune -af || true
 
-        script {
+        docker buildx rm ${BUILDER} || true
 
-          env.TRIGGERED_BY = sh(
+        docker rmi ${FULL_IMAGE_VERSION} || true
+        docker rmi ${FULL_IMAGE}:latest || true
+    '''
+
+    script {
+
+        env.TRIGGERED_BY = sh(
             script: "git log -1 --pretty=format:'%an' || echo Unknown",
             returnStdout: true
-          ).trim()
-        
-          def status = currentBuild.currentResult
-          def color = status == "SUCCESS" ? "Good" : "Attention"
-          def emoji = status == "SUCCESS" ? "✅" : "🚨"
+        ).trim()
 
-          def timestamp = sh(
+        def status = currentBuild.currentResult
+        def color  = status == "SUCCESS" ? "Good" : "Attention"
+        def emoji  = status == "SUCCESS" ? "✅" : "🚨"
+
+        def timestamp = sh(
             script: 'TZ="Asia/Kolkata" date +"%Y-%m-%d %I:%M:%S %p IST"',
             returnStdout: true
-          ).trim()
+        ).trim()
 
-          sh """
-            echo "=== Sending Teams Notification ==="
+        sh """
+            echo "========================================"
+            echo "Sending Teams Notification"
+            echo "========================================"
 
-            RESPONSE=\$(curl -s \
-              -o teams-response.txt \
-              -w "HTTP_CODE:%{http_code}" \
-              -H "Content-Type: application/json" \
-              -d '{
-                    "type": "message",
-                    "attachments": [{
-                      "contentType": "application/vnd.microsoft.card.adaptive",
-                      "content": {
-                        "\$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
-                        "type": "AdaptiveCard",
-                        "version": "1.4",
-                        "body": [{
-                          "type": "TextBlock",
-                          "text": "${emoji} Build & Deploy - ${status}",
-                          "weight": "Bolder",
-                          "size": "Large",
-                          "color": "${color}"
-                        },
-                        {
-                          "type": "FactSet",
-                          "facts": [
-                            { "title": "Job:", "value": "${env.JOB_NAME}" },
-                            { "title": "Build #:", "value": "${env.BUILD_NUMBER}" },
-                            { "title": "Image:", "value": "${FULL_IMAGE}" },
-                            { "title": "Triggered By:", "value": "${env.TRIGGERED_BY}" },
-                            { "title": "Branch:", "value": "${env.BRANCH_NAME}" },
-                            { "title": "Repository:", "value": "${env.GIT_URL}" },
-                            { "title": "Completed At:", "value": "${timestamp}" }
-                          ]
-                        }],
-                        "actions": [{
-                          "type": "Action.OpenUrl",
-                          "title": "View Build",
-                          "url": "${env.BUILD_URL}"
+            ATTEMPT=1
+            MAX_ATTEMPTS=3
+            RESPONSE=""
+
+            while [ \$ATTEMPT -le \$MAX_ATTEMPTS ]
+            do
+                echo ""
+                echo "Teams Notification Attempt: \$ATTEMPT"
+
+                RESPONSE=\$(curl -s \
+                    -D teams-headers.txt \
+                    -o teams-response.txt \
+                    -w "%{http_code}" \
+                    -H "Content-Type: application/json" \
+                    -d '{
+                        "type": "message",
+                        "attachments": [{
+                            "contentType": "application/vnd.microsoft.card.adaptive",
+                            "content": {
+                                "\$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                                "type": "AdaptiveCard",
+                                "version": "1.4",
+                                "body": [{
+                                    "type": "TextBlock",
+                                    "text": "${emoji} Build & Deploy - ${status}",
+                                    "weight": "Bolder",
+                                    "size": "Large",
+                                    "color": "${color}"
+                                },
+                                {
+                                    "type": "FactSet",
+                                    "facts": [
+                                        {
+                                            "title": "Job:",
+                                            "value": "${env.JOB_NAME}"
+                                        },
+                                        {
+                                            "title": "Build #:",
+                                            "value": "${env.BUILD_NUMBER}"
+                                        },
+                                        {
+                                            "title": "Image:",
+                                            "value": "${FULL_IMAGE}"
+                                        },
+                                        {
+                                            "title": "Triggered By:",
+                                            "value": "${env.TRIGGERED_BY}"
+                                        },
+                                        {
+                                            "title": "Branch:",
+                                            "value": "${env.BRANCH_NAME}"
+                                        },
+                                        {
+                                            "title": "Repository:",
+                                            "value": "${env.GIT_URL}"
+                                        },
+                                        {
+                                            "title": "Completed At:",
+                                            "value": "${timestamp}"
+                                        }
+                                    ]
+                                }],
+                                "actions": [{
+                                    "type": "Action.OpenUrl",
+                                    "title": "View Build",
+                                    "url": "${env.BUILD_URL}"
+                                }]
+                            }
                         }]
-                      }
-                    }]
-                  }' \\
-              "$TEAMS_WEBHOOK")
+                    }' \
+                    "$TEAMS_WEBHOOK")
 
-            echo "=== Teams Response Body ==="
+                echo "HTTP Status: \$RESPONSE"
+
+                if [ "\$RESPONSE" = "200" ]; then
+                    echo "Teams notification sent successfully."
+                    break
+                fi
+
+                echo "Notification failed. Waiting 5 seconds before retry..."
+                sleep 5
+
+                ATTEMPT=\$((ATTEMPT + 1))
+            done
+
+            echo ""
+            echo "========================================"
+            echo "Teams Response Headers"
+            echo "========================================"
+            cat teams-headers.txt || true
+
+            echo ""
+            echo "========================================"
+            echo "Teams Response Body"
+            echo "========================================"
             cat teams-response.txt || true
 
-            echo "=== Teams HTTP Response ==="
+            echo ""
+            echo "========================================"
+            echo "Final HTTP Status"
+            echo "========================================"
             echo "\$RESPONSE"
 
-            echo "=== Teams Notification Completed ==="
-          """
-        }
+            if [ "\$RESPONSE" != "200" ]; then
+                echo ""
+                echo "WARNING: Teams notification failed after \$MAX_ATTEMPTS attempts"
+            fi
+
+            echo ""
+            echo "========================================"
+            echo "Teams Notification Completed"
+            echo "========================================"
+        """
     }
-  }
+}
+```
+
+}
+
 }
