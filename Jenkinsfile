@@ -762,166 +762,162 @@ pipeline {
     }
   }
 
-post {
-always {
+  post {
+    always {
+        sh '''
+            docker rmi ${FULL_IMAGE} || true
 
-```
-    sh '''
-        docker rmi ${FULL_IMAGE} || true
+            echo "Cleaning Jenkins docker garbage..."
 
-        echo "Cleaning Jenkins docker garbage..."
+            docker ps -aq --filter "label=jenkins" | xargs -r docker rm -f || true
 
-        docker ps -aq --filter "label=jenkins" | xargs -r docker rm -f || true
+            docker container prune -f || true
+            docker image prune -af || true
+            docker volume prune -f || true
+            docker builder prune -af || true
 
-        docker container prune -f || true
-        docker image prune -af || true
-        docker volume prune -f || true
-        docker builder prune -af || true
+            docker buildx rm ${BUILDER} || true
 
-        docker buildx rm ${BUILDER} || true
+            docker rmi ${FULL_IMAGE_VERSION} || true
+            docker rmi ${FULL_IMAGE}:latest || true
+        '''
 
-        docker rmi ${FULL_IMAGE_VERSION} || true
-        docker rmi ${FULL_IMAGE}:latest || true
-    '''
+        script {
 
-    script {
+            env.TRIGGERED_BY = sh(
+                script: "git log -1 --pretty=format:'%an' || echo Unknown",
+                returnStdout: true
+            ).trim()
 
-        env.TRIGGERED_BY = sh(
-            script: "git log -1 --pretty=format:'%an' || echo Unknown",
-            returnStdout: true
-        ).trim()
+            def status = currentBuild.currentResult
+            def color  = status == "SUCCESS" ? "Good" : "Attention"
+            def emoji  = status == "SUCCESS" ? "✅" : "🚨"
 
-        def status = currentBuild.currentResult
-        def color  = status == "SUCCESS" ? "Good" : "Attention"
-        def emoji  = status == "SUCCESS" ? "✅" : "🚨"
+            def timestamp = sh(
+                script: 'TZ="Asia/Kolkata" date +"%Y-%m-%d %I:%M:%S %p IST"',
+                returnStdout: true
+            ).trim()
 
-        def timestamp = sh(
-            script: 'TZ="Asia/Kolkata" date +"%Y-%m-%d %I:%M:%S %p IST"',
-            returnStdout: true
-        ).trim()
+            sh """
+                echo "========================================"
+                echo "Sending Teams Notification"
+                echo "========================================"
 
-        sh """
-            echo "========================================"
-            echo "Sending Teams Notification"
-            echo "========================================"
+                ATTEMPT=1
+                MAX_ATTEMPTS=3
+                RESPONSE=""
 
-            ATTEMPT=1
-            MAX_ATTEMPTS=3
-            RESPONSE=""
+                while [ \$ATTEMPT -le \$MAX_ATTEMPTS ]
+                do
+                    echo ""
+                    echo "Teams Notification Attempt: \$ATTEMPT"
 
-            while [ \$ATTEMPT -le \$MAX_ATTEMPTS ]
-            do
+                    RESPONSE=\$(curl -s \
+                        -D teams-headers.txt \
+                        -o teams-response.txt \
+                        -w "%{http_code}" \
+                        -H "Content-Type: application/json" \
+                        -d '{
+                            "type": "message",
+                            "attachments": [{
+                                "contentType": "application/vnd.microsoft.card.adaptive",
+                                "content": {
+                                    "\$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                                    "type": "AdaptiveCard",
+                                    "version": "1.4",
+                                    "body": [{
+                                        "type": "TextBlock",
+                                        "text": "${emoji} Build & Deploy - ${status}",
+                                        "weight": "Bolder",
+                                        "size": "Large",
+                                        "color": "${color}"
+                                    },
+                                    {
+                                        "type": "FactSet",
+                                        "facts": [
+                                            {
+                                                "title": "Job:",
+                                                "value": "${env.JOB_NAME}"
+                                            },
+                                            {
+                                                "title": "Build #:",
+                                                "value": "${env.BUILD_NUMBER}"
+                                            },
+                                            {
+                                                "title": "Image:",
+                                                "value": "${FULL_IMAGE}"
+                                            },
+                                            {
+                                                "title": "Triggered By:",
+                                                "value": "${env.TRIGGERED_BY}"
+                                            },
+                                            {
+                                                "title": "Branch:",
+                                                "value": "${env.BRANCH_NAME}"
+                                            },
+                                            {
+                                                "title": "Repository:",
+                                                "value": "${env.GIT_URL}"
+                                            },
+                                            {
+                                                "title": "Completed At:",
+                                                "value": "${timestamp}"
+                                            }
+                                        ]
+                                    }],
+                                    "actions": [{
+                                        "type": "Action.OpenUrl",
+                                        "title": "View Build",
+                                        "url": "${env.BUILD_URL}"
+                                    }]
+                                }
+                            }]
+                        }' \
+                        "$TEAMS_WEBHOOK")
+
+                    echo "HTTP Status: \$RESPONSE"
+
+                    if [ "\$RESPONSE" = "200" ]; then
+                        echo "Teams notification sent successfully."
+                        break
+                    fi
+
+                    echo "Notification failed. Waiting 5 seconds before retry..."
+                    sleep 5
+
+                    ATTEMPT=\$((ATTEMPT + 1))
+                done
+
                 echo ""
-                echo "Teams Notification Attempt: \$ATTEMPT"
+                echo "========================================"
+                echo "Teams Response Headers"
+                echo "========================================"
+                cat teams-headers.txt || true
 
-                RESPONSE=\$(curl -s \
-                    -D teams-headers.txt \
-                    -o teams-response.txt \
-                    -w "%{http_code}" \
-                    -H "Content-Type: application/json" \
-                    -d '{
-                        "type": "message",
-                        "attachments": [{
-                            "contentType": "application/vnd.microsoft.card.adaptive",
-                            "content": {
-                                "\$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
-                                "type": "AdaptiveCard",
-                                "version": "1.4",
-                                "body": [{
-                                    "type": "TextBlock",
-                                    "text": "${emoji} Build & Deploy - ${status}",
-                                    "weight": "Bolder",
-                                    "size": "Large",
-                                    "color": "${color}"
-                                },
-                                {
-                                    "type": "FactSet",
-                                    "facts": [
-                                        {
-                                            "title": "Job:",
-                                            "value": "${env.JOB_NAME}"
-                                        },
-                                        {
-                                            "title": "Build #:",
-                                            "value": "${env.BUILD_NUMBER}"
-                                        },
-                                        {
-                                            "title": "Image:",
-                                            "value": "${FULL_IMAGE}"
-                                        },
-                                        {
-                                            "title": "Triggered By:",
-                                            "value": "${env.TRIGGERED_BY}"
-                                        },
-                                        {
-                                            "title": "Branch:",
-                                            "value": "${env.BRANCH_NAME}"
-                                        },
-                                        {
-                                            "title": "Repository:",
-                                            "value": "${env.GIT_URL}"
-                                        },
-                                        {
-                                            "title": "Completed At:",
-                                            "value": "${timestamp}"
-                                        }
-                                    ]
-                                }],
-                                "actions": [{
-                                    "type": "Action.OpenUrl",
-                                    "title": "View Build",
-                                    "url": "${env.BUILD_URL}"
-                                }]
-                            }
-                        }]
-                    }' \
-                    "$TEAMS_WEBHOOK")
+                echo ""
+                echo "========================================"
+                echo "Teams Response Body"
+                echo "========================================"
+                cat teams-response.txt || true
 
-                echo "HTTP Status: \$RESPONSE"
+                echo ""
+                echo "========================================"
+                echo "Final HTTP Status"
+                echo "========================================"
+                echo "\$RESPONSE"
 
-                if [ "\$RESPONSE" = "200" ]; then
-                    echo "Teams notification sent successfully."
-                    break
+                if [ "\$RESPONSE" != "200" ]; then
+                    echo ""
+                    echo "WARNING: Teams notification failed after \$MAX_ATTEMPTS attempts"
                 fi
 
-                echo "Notification failed. Waiting 5 seconds before retry..."
-                sleep 5
-
-                ATTEMPT=\$((ATTEMPT + 1))
-            done
-
-            echo ""
-            echo "========================================"
-            echo "Teams Response Headers"
-            echo "========================================"
-            cat teams-headers.txt || true
-
-            echo ""
-            echo "========================================"
-            echo "Teams Response Body"
-            echo "========================================"
-            cat teams-response.txt || true
-
-            echo ""
-            echo "========================================"
-            echo "Final HTTP Status"
-            echo "========================================"
-            echo "\$RESPONSE"
-
-            if [ "\$RESPONSE" != "200" ]; then
                 echo ""
-                echo "WARNING: Teams notification failed after \$MAX_ATTEMPTS attempts"
-            fi
-
-            echo ""
-            echo "========================================"
-            echo "Teams Notification Completed"
-            echo "========================================"
-        """
+                echo "========================================"
+                echo "Teams Notification Completed"
+                echo "========================================"
+            """
+        }
     }
-}
-```
-
-}
+  }
 
 }
