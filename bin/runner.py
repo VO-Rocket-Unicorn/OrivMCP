@@ -15,10 +15,10 @@ def run():
 
     uvicorn.run(
         app="oriv_mcp.server.app:app",
-        host=settings.host,
-        port=settings.port,
-        workers=settings.workers,
-        timeout_keep_alive=settings.timeout_keep_alive,
+        host=settings.server.host,
+        port=settings.server.port,
+        workers=settings.server.workers,
+        timeout_keep_alive=settings.server.timeout_keep_alive,
     )
 
 
