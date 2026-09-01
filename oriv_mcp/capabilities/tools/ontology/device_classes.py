@@ -1,14 +1,22 @@
 from typing import Annotated
 
+from mcp.server.mcpserver import Context
 from pydantic import Field
 
 from oriv_mcp.clients import device_class_client
+from oriv_mcp.clients.device_class import ODAS_TOKEN_HEADER
 from oriv_mcp.schemas.device_class import (
     GetDeviceClassOutput,
     ListDeviceClassesOutput,
     SearchDeviceClassesOutput,
 )
 from oriv_mcp.server.app import mcp_app
+from oriv_mcp.utils.request_headers import require_secret_header
+
+ODAS_TOKEN_HINT = (
+    "The caller must supply its ODAS token on that header; this server holds no "
+    "credentials of its own."
+)
 
 MIN_LIST_DEPTH = 1
 DEFAULT_LIST_DEPTH = 1
@@ -26,6 +34,7 @@ DEFAULT_SEARCH_LIMIT = 10
     ),
 )
 async def list_device_classes(
+    ctx: Context,
     parent_id: Annotated[
         str | None,
         Field(
@@ -50,7 +59,8 @@ async def list_device_classes(
         ),
     ] = None,
 ) -> ListDeviceClassesOutput:
-    return await device_class_client.list_device_classes(parent_id, depth, cursor)
+    token = require_secret_header(ctx, ODAS_TOKEN_HEADER, ODAS_TOKEN_HINT)
+    return await device_class_client.list_device_classes(token, parent_id, depth, cursor)
 
 
 @mcp_app.tool(
@@ -61,9 +71,13 @@ async def list_device_classes(
     ),
 )
 async def search_device_classes(
+    ctx: Context,
     query: Annotated[
         str,
-        Field(description="Case-insensitive substring matched against name and description."),
+        Field(
+            min_length=1,
+            description="Case-insensitive substring matched against name and description.",
+        ),
     ],
     limit: Annotated[
         int,
@@ -74,7 +88,8 @@ async def search_device_classes(
         ),
     ] = DEFAULT_SEARCH_LIMIT,
 ) -> SearchDeviceClassesOutput:
-    return await device_class_client.search_device_classes(query, limit)
+    token = require_secret_header(ctx, ODAS_TOKEN_HEADER, ODAS_TOKEN_HINT)
+    return await device_class_client.search_device_classes(token, query, limit)
 
 
 @mcp_app.tool(
@@ -86,6 +101,8 @@ async def search_device_classes(
     ),
 )
 async def get_device_class(
+    ctx: Context,
     id: Annotated[str, Field(description="Id of the device class to inspect.")],
 ) -> GetDeviceClassOutput:
-    return await device_class_client.get_device_class(id)
+    token = require_secret_header(ctx, ODAS_TOKEN_HEADER, ODAS_TOKEN_HINT)
+    return await device_class_client.get_device_class(token, id)

@@ -2,8 +2,9 @@ from pydantic import Field, computed_field
 
 from oriv_mcp.config.settings.base import EnvSettings
 
-DEFAULT_DEVICE_CLASSES_PATH = "/device-classes"
+DEFAULT_DEVICE_CLASSES_PATH = "/api/v1/device-classes"
 DEFAULT_SEARCH_PATH = "/search"
+DEFAULT_HEALTH_PATH = "/health"
 DEFAULT_OTEL_LOGS_PATH = "/v1/logs"
 DEFAULT_OTEL_TRACES_PATH = "/v1/traces"
 DEFAULT_OTEL_METRICS_PATH = "/v1/metrics"
@@ -21,11 +22,11 @@ class UrlSettings(EnvSettings):
         ...,
         description="Endpoint URL for sending logs",
     )
-    ontology_base_url: str = Field(
+    odas_base_url: str = Field(
         default="",
         description=(
-            "Base URL of the device-class / ontology API. Empty until the service "
-            "exists; see temp/device-class-api-spec.md for the contract."
+            "Base URL of ODAS, the backend serving the device-class endpoints. "
+            "Empty until the service exists; see temp/device-class-api-spec.md."
         ),
     )
 
@@ -44,11 +45,18 @@ class UrlSettings(EnvSettings):
     )
     device_classes_path: str = Field(
         default=DEFAULT_DEVICE_CLASSES_PATH,
-        description="Path appended to ontology_base_url for the device-class collection.",
+        description="Path appended to odas_base_url for the device-class collection.",
     )
     search_path: str = Field(
         default=DEFAULT_SEARCH_PATH,
         description="Path appended to the device-class collection for keyword search.",
+    )
+    odas_health_path: str = Field(
+        default=DEFAULT_HEALTH_PATH,
+        description=(
+            "Path appended to odas_base_url for the startup reachability probe. "
+            "Sits at the host root, not under the device-class collection."
+        ),
     )
 
     # ---- telemetry ----
@@ -75,7 +83,7 @@ class UrlSettings(EnvSettings):
     @property
     def device_classes_url(self) -> str:
         """Browse one level of the device-class tree."""
-        return f"{self.ontology_base_url}{self.device_classes_path}"
+        return f"{self.odas_base_url}{self.device_classes_path}"
 
     @computed_field
     @property
@@ -86,3 +94,9 @@ class UrlSettings(EnvSettings):
     def device_class_url(self, class_id: str) -> str:
         """One class with its ancestors, children, and siblings."""
         return f"{self.device_classes_url}/{class_id}"
+
+    @computed_field
+    @property
+    def odas_health_url(self) -> str:
+        """Probed once at startup to confirm odas_base_url actually points at ODAS."""
+        return f"{self.odas_base_url}{self.odas_health_path}"
