@@ -1,10 +1,56 @@
 from pathlib import Path
 import logging
 
-from pydantic import Field, computed_field
+from pydantic import Field, computed_field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from lib_oriv_telemetry.enums import EnvironmentEnum
+
+# A Host/Origin entry without a port only matches a request that carries no
+# port either, so every bare entry is paired with this wildcard form.
+PORT_WILDCARD_SUFFIX = ":*"
+SCHEME_SEPARATOR = "://"
+DEFAULT_MCP_PATH = "/mcp"
+ROOT_PATH = "/"
+
+
+def _has_explicit_port(host: str) -> bool:
+    """True if `host` pins a port. Bracketed IPv6 literals carry inner colons."""
+    if host.startswith("["):
+        closing = host.find("]")
+        return closing != -1 and ":" in host[closing + 1 :]
+    return ":" in host
+
+
+def _expand_host(host: str) -> list[str]:
+    """Pair a bare host with its port-wildcard form; leave pinned ports alone."""
+    if not host or host.endswith(PORT_WILDCARD_SUFFIX) or _has_explicit_port(host):
+        return [host] if host else []
+    return [host, f"{host}{PORT_WILDCARD_SUFFIX}"]
+
+
+def _normalize_host_entry(entry: str) -> list[str]:
+    """Reduce an entry to Host-header form: no scheme, no path, plus wildcard."""
+    host = entry.strip()
+    if SCHEME_SEPARATOR in host:
+        host = host.split(SCHEME_SEPARATOR, 1)[1]
+    return _expand_host(host.split(ROOT_PATH, 1)[0])
+
+
+def _normalize_origin_entry(entry: str) -> list[str]:
+    """Reduce an entry to Origin-header form: scheme://host, no path, plus wildcard."""
+    origin = entry.strip()
+    if SCHEME_SEPARATOR not in origin:
+        return _normalize_host_entry(origin)
+    scheme, rest = origin.split(SCHEME_SEPARATOR, 1)
+    return [
+        f"{scheme}{SCHEME_SEPARATOR}{host}"
+        for host in _expand_host(rest.split(ROOT_PATH, 1)[0])
+    ]
+
+
+def _dedupe(values: list[str]) -> list[str]:
+    return list(dict.fromkeys(values))
 
 
 class Settings(BaseSettings):
@@ -32,6 +78,16 @@ class Settings(BaseSettings):
         default=5,
         description="Number of seconds to wait for the next request on a Keep-Alive connection",
     )
+    device_classes_path: Path = Field(
+        default_factory=lambda: Path(__file__).resolve().parents[2]
+        / "temp"
+        / "device_classes.json",
+        description="Device-class taxonomy JSON, loaded into memory once at startup.",
+    )
+    mcp_path: str = Field(
+        default=DEFAULT_MCP_PATH,
+        description="Path the streamable HTTP MCP endpoint is served from. The endpoint is also aliased at '/' so clients given a bare base URL still connect.",
+    )
 
     # ---- environment ----
     environment: EnvironmentEnum = Field(
@@ -54,101 +110,29 @@ class Settings(BaseSettings):
         )
 
     allowed_hosts: list[str] = Field(
-        default_factory=list, description="List of allowed hosts for CORS"
+        default_factory=list,
+        description="Allowed Host header values. Entries are normalized: scheme and path are stripped, and a ':*' port wildcard is added for any entry without an explicit port.",
     )
     allowed_origins: list[str] = Field(
-        default_factory=list, description="List of allowed origins for CORS"
+        default_factory=list,
+        description="Allowed Origin header values. Entries are normalized: path is stripped, and a ':*' port wildcard is added for any entry without an explicit port.",
     )
 
-    # ---- auth ----
-    auth_base_url: str = Field(
-        default="http://localhost:8000",
-        description="Public URL of this server (JWT 'iss' and 'aud' claim; same process hosts auth and MCP).",
-    )
-    access_token_ttl_seconds: int = Field(default=3600)
-    auth_code_ttl_seconds: int = Field(default=300)
-    login_session_ttl_seconds: int = Field(default=600)
-    supported_scopes: list[str] = Field(default_factory=lambda: ["read", "write"])
-    keys_dir: Path = Field(
-        default_factory=lambda: Path(__file__).resolve().parents[2] / "keys",
-        description="Directory holding the RSA keypair PEM files.",
-    )
+    @field_validator("allowed_hosts", mode="after")
+    @classmethod
+    def normalize_allowed_hosts(cls, hosts: list[str]) -> list[str]:
+        return _dedupe([h for entry in hosts for h in _normalize_host_entry(entry)])
 
-    # ---- urls ----
-    code_generation_base_url: str = Field(
-        ...,
-        description="Base URL for the code generation service",
-    )
-    csas_base_url: str = Field(
-        ...,
-        description="Base URL for the CSAS service",
-    )
+    @field_validator("allowed_origins", mode="after")
+    @classmethod
+    def normalize_allowed_origins(cls, origins: list[str]) -> list[str]:
+        return _dedupe([o for entry in origins for o in _normalize_origin_entry(entry)])
 
-    csas_origin: str = Field(
-        default="oriv_mcp",
-        description="Origin header value to use when making requests to CSAS. Set to 'localhost' if CSAS is running locally without CORS restrictions.",
-    )
-
+    # ---- telemetry ----
     otel_url: str = Field(
         ...,
         description="Endpoint URL for sending logs",
     )
-
-    # --- Admin Credentials
-    admin_username: str = Field(..., description="Username for admin authentication")
-
-    admin_password: str = Field(..., description="Password for admin authentication")
-
-    # --- Computed URLs ---
-    def get_simulation_schema_url(self, category: str) -> str:
-        """Construct the URL to retrieve the simulation schema for a given category."""
-        return f"{self.code_generation_base_url}/simulations/{category}/schema"
-
-    @computed_field
-    @property
-    def component_list_url(self) -> str:
-        return f"{self.csas_base_url}/api/v1/internal/components"
-
-    @computed_field
-    @property
-    def upload_datasheet_url(self) -> str:
-        return f"{self.csas_base_url}/api/v1/internal/files/pdf"
-
-    @computed_field
-    @property
-    def create_component_url(self) -> str:
-        """Construct the URL to create a new component."""
-        return f"{self.csas_base_url}/api/v1/internal/components/extract"
-
-    def check_component_creation_status_url(self, component_id: str) -> str:
-        """Construct the URL to check the status of component creation."""
-        return f"{self.csas_base_url}/api/v1/internal/components/{component_id}/status"
-
-    def create_simulation_url(self, component_id: str) -> str:
-        """Construct the URL to create a new simulation for a given component."""
-        return f"{self.csas_base_url}/api/v1/internal/components/{component_id}/simulations/new"
-
-    def start_code_generation_url(self, component_id: str, simulation_id: str) -> str:
-        """Construct the URL to start code generation for a given simulation."""
-        return f"{self.csas_base_url}/api/v1/internal/components/{component_id}/simulations/{simulation_id}/code/generate"
-
-    def get_code_generation_status_url(
-        self, component_id: str, simulation_id: str
-    ) -> str:
-        """Construct the URL to get code generation status for a given simulation."""
-        return f"{self.csas_base_url}/api/v1/internal/components/{component_id}/simulations/{simulation_id}/code/status"
-
-    def start_simulation_execution_url(
-        self, component_id: str, simulation_id: str
-    ) -> str:
-        """Construct the URL to start simulation execution for a given simulation."""
-        return f"{self.csas_base_url}/api/v1/internal/components/{component_id}/simulations/{simulation_id}/execute"
-
-    def get_simulation_execution_status_url(
-        self, component_id: str, simulation_id: str
-    ) -> str:
-        """Construct the URL to get simulation execution status for a given simulation."""
-        return f"{self.csas_base_url}/api/v1/internal/components/{component_id}/simulations/{simulation_id}/execution/status"
 
     @computed_field
     @property
