@@ -3,6 +3,7 @@ from typing import Annotated
 from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import Field
 
+from oriv_mcp.capabilities.tools.tags import ONTOLOGY_TAG, tags_meta
 from oriv_mcp.schemas.device_class import (
     DeviceClassNode,
     GetDeviceClassOutput,
@@ -77,6 +78,7 @@ def _match_rank(entry: IndexEntry, query: str) -> int | None:
         "Browse one level of the device-class tree. Call with no parent_id to "
         "see the top-level classes, then call again with a chosen id to go deeper."
     ),
+    meta=tags_meta(ONTOLOGY_TAG),
 )
 def list_device_classes(
     parent_id: Annotated[
@@ -117,6 +119,7 @@ def list_device_classes(
         "Find device classes by keyword when a term from the datasheet is "
         "already known. Faster than browsing."
     ),
+    meta=tags_meta(ONTOLOGY_TAG),
 )
 def search_device_classes(
     query: Annotated[
@@ -156,6 +159,7 @@ def search_device_classes(
         "a class before committing to it — the siblings are the classes most "
         "likely to be confused with it."
     ),
+    meta=tags_meta(ONTOLOGY_TAG),
 )
 def get_device_class(
     id: Annotated[str, Field(description="Id of the device class to inspect.")],
