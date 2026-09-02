@@ -1,5 +1,5 @@
-from enum import StrEnum
+"""Values shared across config groups and the server wiring."""
 
-
-class ComponentCategory(StrEnum):
-    BLDC_SINGLE_PHASE_MOTOR = "bldc-single-phase-motor"
+ENV_FILE = ".env"
+ROOT_PATH = "/"
+DEFAULT_MCP_PATH = "/mcp"

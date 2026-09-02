@@ -1,5 +1,3 @@
-from oriv_mcp.schemas.flight import PlannerInput
-
 from oriv_mcp.server.app import mcp_app
 
 
