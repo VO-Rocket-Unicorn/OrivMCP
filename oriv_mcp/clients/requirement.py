@@ -163,15 +163,18 @@ class RequirementClient(ApiClient):
         anyway: it takes the arithmetic off the model's path, and with it one
         way for the model to stop paging early by mistake.
         """
+        # The window ODAS says it applied, falling back to the one asked for.
+        applied_page = odas_page.page or page
+        applied_limit = odas_page.limit or limit
         return RequirementListing(
             items=[
                 cls._to_node(row, paths[index] if paths else None)
                 for index, row in enumerate(odas_page.items)
             ],
-            page=page,
-            limit=limit,
+            page=applied_page,
+            limit=applied_limit,
             total=odas_page.total,
-            has_more=page * limit < odas_page.total,
+            has_more=applied_page * applied_limit < odas_page.total,
         )
 
     # ---- reads ----

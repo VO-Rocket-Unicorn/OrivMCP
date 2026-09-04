@@ -125,20 +125,41 @@ class OdasRequirementRow(OdasRequirementFields):
     child_count: int = Field(validation_alias=AliasChoices("childCount", "child_count"))
 
 
+class OdasParentRef(BaseModel):
+    """A requirement referred to from another one.
+
+    Show resolves the confirmed parent to an object; the listed row spells the
+    same thing as a bare id. Only the id is kept — the parent's own name and
+    label arrive with the ancestor path, which is where they are useful.
+    """
+
+    id: str = Field(validation_alias=AliasChoices("requirementId", "id"))
+    name: str = ""
+    label: str = ""
+
+
 class OdasRequirementDetail(OdasRequirementFields):
     """`GET …/requirements/{id}` — the untruncated record.
 
-    `childCount` is optional here, unlike on a listed row: Show is only
-    promised the three new list fields, so when it omits the count the client
-    asks for it separately rather than failing a single-node read.
+    Show carries far more than these tools return: the per-criterion
+    completeness array, the level and type reasoning, every suggested relation
+    and the audit trail. All of it is ignored here. `rationale` is the one
+    heavyweight field kept, and only because a candidate under serious
+    consideration is worth spending it on.
+
+    It carries no `childCount` and no `altitude`, so both are worked out on the
+    way past: the count from a separate read, the altitude from the pair ODAS
+    does send.
     """
 
     rationale: str = ""
+    # Show resolves the parent to an object; the full listed row gives a scalar
+    # `parentId`, and older list responses only ever carried `parents`. Read
+    # whichever arrived.
+    parent: OdasParentRef | None = None
     parent_id: str | None = Field(
         default=None, validation_alias=AliasChoices("parentId", "parent_id")
     )
-    # Superseded by the scalar `parentId`, kept as a fallback: the list
-    # response has historically carried the confirmed parent in this array.
     parents: list[str] = Field(default_factory=list)
     child_count: int | None = Field(
         default=None, validation_alias=AliasChoices("childCount", "child_count")
@@ -146,14 +167,23 @@ class OdasRequirementDetail(OdasRequirementFields):
 
     @property
     def confirmed_parent_id(self) -> str | None:
+        if self.parent is not None:
+            return self.parent.id
         return self.parent_id or (self.parents[0] if self.parents else None)
 
 
 class OdasRequirementPage(BaseModel):
-    """The payload of a requirement listing: matches, and how many there are in all."""
+    """The payload of a requirement listing: matches, and how many there are in all.
+
+    ODAS echoes the window it actually applied. That is worth reading back
+    rather than assuming the requested one held: omitting `limit` there means
+    "everything", answered as page 1 of one page.
+    """
 
     items: list[OdasRequirementRow] = Field(default_factory=list)
     total: int = 0
+    page: int | None = None
+    limit: int | None = None
 
 
 class OdasAncestor(BaseModel):
