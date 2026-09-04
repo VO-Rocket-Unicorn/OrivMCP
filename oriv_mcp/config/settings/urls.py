@@ -3,6 +3,9 @@ from pydantic import Field, computed_field
 from oriv_mcp.config.settings.base import EnvSettings
 
 DEFAULT_DEVICE_CLASSES_PATH = "/api/v1/device-classes"
+DEFAULT_PROJECTS_PATH = "/api/v1/projects"
+DEFAULT_REQUIREMENTS_PATH = "/requirements"
+DEFAULT_ANCESTORS_PATH = "/ancestors"
 DEFAULT_SEARCH_PATH = "/search"
 DEFAULT_HEALTH_PATH = "/health"
 DEFAULT_OTEL_LOGS_PATH = "/v1/logs"
@@ -51,6 +54,18 @@ class UrlSettings(EnvSettings):
         default=DEFAULT_SEARCH_PATH,
         description="Path appended to the device-class collection for keyword search.",
     )
+    projects_path: str = Field(
+        default=DEFAULT_PROJECTS_PATH,
+        description="Path appended to odas_base_url for the project collection.",
+    )
+    requirements_path: str = Field(
+        default=DEFAULT_REQUIREMENTS_PATH,
+        description="Path appended to one project's URL for its requirements.",
+    )
+    ancestors_path: str = Field(
+        default=DEFAULT_ANCESTORS_PATH,
+        description="Path appended to one requirement's URL for its ancestor chain.",
+    )
     odas_health_path: str = Field(
         default=DEFAULT_HEALTH_PATH,
         description=(
@@ -95,6 +110,14 @@ class UrlSettings(EnvSettings):
         """One class with its ancestors, children, and siblings."""
         return f"{self.device_classes_url}/{class_id}"
 
+    # ---- requirements ----
+    @computed_field
+    @property
+    def projects_url(self) -> str:
+        """The project collection. Requirements hang beneath one project."""
+        return f"{self.odas_base_url}{self.projects_path}"
+
+    # ---- health ----
     @computed_field
     @property
     def odas_health_url(self) -> str:

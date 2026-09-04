@@ -9,6 +9,7 @@ so that is where the tag lives.
 TAGS_META_KEY = "tags"
 
 ONTOLOGY_TAG = "ontology"
+REQUIREMENTS_TAG = "requirements"
 
 
 def tags_meta(*tags: str) -> dict[str, list[str]]:
