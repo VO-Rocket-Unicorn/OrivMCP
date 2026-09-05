@@ -74,19 +74,6 @@ class RequirementType(StrEnum):
     UNKNOWN = "UNKNOWN"
 
 
-def altitude_of(level: RequirementLevel, is_atomic: bool) -> Altitude:
-    """Derive altitude from the pair ODAS stores.
-
-    ODAS is asked to send `altitude` computed; this is the fallback for a
-    response that predates that, and the one place the mapping is written.
-    """
-    if level is RequirementLevel.STAKEHOLDER:
-        return Altitude.STAKEHOLDER
-    if level is RequirementLevel.SYSTEM:
-        return Altitude.ATOMIC if is_atomic else Altitude.SYSTEM
-    return Altitude.UNKNOWN
-
-
 # ---------------------------------------------------------------------------
 # What ODAS returns
 # ---------------------------------------------------------------------------
@@ -95,10 +82,11 @@ def altitude_of(level: RequirementLevel, is_atomic: bool) -> Altitude:
 class OdasRequirementFields(BaseModel):
     """The fields every ODAS requirement row carries, listed or shown.
 
-    Ids and flags are read through `AliasChoices` because the same value is
-    spelled differently across ODAS's list and show responses; `altitude` is
-    optional so a response that has not started sending it computed still
-    validates, and is derived on the way out.
+    Ids and text are read through `AliasChoices` because the same value is
+    spelled differently across ODAS's list and show responses. `altitude` is
+    required: ODAS derives it from `level` + `isAtomic` and sends it on every
+    shape, so nothing here re-derives it — that duplicated mapping is exactly
+    what asking for the field was meant to retire.
     """
 
     id: str = Field(validation_alias=AliasChoices("requirementId", "id"))
@@ -110,7 +98,7 @@ class OdasRequirementFields(BaseModel):
     level: RequirementLevel
     type: RequirementType
     is_atomic: bool = Field(validation_alias=AliasChoices("isAtomic", "is_atomic"))
-    altitude: Altitude | None = None
+    altitude: Altitude
 
 
 class OdasRequirementRow(OdasRequirementFields):
@@ -123,6 +111,9 @@ class OdasRequirementRow(OdasRequirementFields):
 
     truncated: bool = False
     child_count: int = Field(validation_alias=AliasChoices("childCount", "child_count"))
+    # Root->parent ancestor ids, sent on every compact row. Passed on only for
+    # search hits, whose position in the tree the caller has not walked to.
+    path: list[str] = Field(default_factory=list)
 
 
 class OdasParentRef(BaseModel):
@@ -147,9 +138,8 @@ class OdasRequirementDetail(OdasRequirementFields):
     heavyweight field kept, and only because a candidate under serious
     consideration is worth spending it on.
 
-    It carries no `childCount` and no `altitude`, so both are worked out on the
-    way past: the count from a separate read, the altitude from the pair ODAS
-    does send.
+    It carries no ancestor path, so that still comes from the ancestors
+    endpoint; everything else arrives here.
     """
 
     rationale: str = ""
@@ -161,9 +151,7 @@ class OdasRequirementDetail(OdasRequirementFields):
         default=None, validation_alias=AliasChoices("parentId", "parent_id")
     )
     parents: list[str] = Field(default_factory=list)
-    child_count: int | None = Field(
-        default=None, validation_alias=AliasChoices("childCount", "child_count")
-    )
+    child_count: int = Field(validation_alias=AliasChoices("childCount", "child_count"))
 
     @property
     def confirmed_parent_id(self) -> str | None:
@@ -259,10 +247,11 @@ class RequirementNode(BaseModel):
     path: list[str] | None = Field(
         default=None,
         description=(
-            "Ancestor names, root first, ending at the direct parent; empty for "
-            "a root. Carried on search hits, where the caller has not walked "
-            "down to the node and so does not otherwise know where it sits. "
-            "Null on roots and children listings, where the position is already known."
+            "Ancestor ids, root first, ending at the direct parent; empty for a "
+            "root. Carried on search hits, where the caller has not walked down "
+            "to the node and so does not otherwise know where it sits — pass one "
+            "of these ids to requirement_tree_node to see what it is. Null on "
+            "roots and children listings, where the position is already known."
         ),
     )
 
@@ -270,10 +259,10 @@ class RequirementNode(BaseModel):
 class RequirementListing(BaseModel):
     """One page of requirements.
 
-    Rows arrive in ODAS's order and are not re-sorted here: sorting a single
-    page is not sorting the set, so re-ordering locally would make paging look
-    ordered while still skipping and repeating rows. A stable total order is
-    ODAS's to guarantee.
+    Read under ODAS's opt-in `sort`, which orders by creation sequence and
+    breaks ties on id. That order is total and stable, so paging cannot
+    silently skip or repeat a row — which is why it is always asked for rather
+    than left to the unspecified default.
     """
 
     model_config = ConfigDict(populate_by_name=True)
@@ -321,5 +310,8 @@ class RequirementDetail(BaseModel):
         alias="childCount", description="Number of direct children."
     )
     path: list[str] = Field(
-        description="Ancestor names, root first, ending at the direct parent. Empty for a root."
+        description=(
+            "Ancestor ids, root first, ending at the direct parent. Empty for a "
+            "root. Each can be passed straight back to requirement_tree_node."
+        )
     )
