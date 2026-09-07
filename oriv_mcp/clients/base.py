@@ -100,10 +100,14 @@ class ApiClient:
             # the credential, so say which one to fix.
             message = message or f"The {self._service_label} rejected the credential."
             message = f"{message} {self._credential_hint}"
-        elif not message:
+        elif message:
+            # The status rides along with the service's own words: a failure has
+            # to be diagnosable from the run trace alone.
+            message = f"{message} (HTTP {response.status_code})"
+        else:
             message = (
                 f"The {self._service_label} rejected the request "
-                f"({response.status_code})."
+                f"(HTTP {response.status_code})."
             )
 
         if trace_id:

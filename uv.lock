@@ -687,6 +687,7 @@ name = "oriv-mcp"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "anyio" },
     { name = "fastapi" },
     { name = "httpx" },
     { name = "lib-oriv-telemetry" },
@@ -705,6 +706,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "anyio", specifier = ">=4.14.2" },
     { name = "fastapi", specifier = ">=0.136.1" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "lib-oriv-telemetry", directory = "deps/lib-oriv-telemetry" },

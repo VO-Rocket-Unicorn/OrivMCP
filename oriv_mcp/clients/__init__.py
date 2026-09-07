@@ -12,6 +12,7 @@ from oriv_mcp.config import settings
 
 from .base import ApiClient
 from .device_class import DeviceClassClient
+from .requirement import RequirementClient
 from .transport import http_client
 
 device_class_client = DeviceClassClient(
@@ -21,9 +22,20 @@ device_class_client = DeviceClassClient(
     health_url=settings.urls.odas_health_url,
 )
 
+# Same host and same credential as the device-class client, so the startup
+# probe that one runs covers this one too.
+requirement_client = RequirementClient(
+    http_client=http_client,
+    projects_url=settings.urls.projects_url,
+    requirements_path=settings.urls.requirements_path,
+    ancestors_path=settings.urls.ancestors_path,
+)
+
 __all__ = [
     "ApiClient",
     "DeviceClassClient",
+    "RequirementClient",
     "device_class_client",
     "http_client",
+    "requirement_client",
 ]
