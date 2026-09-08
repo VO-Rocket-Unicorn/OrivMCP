@@ -8,6 +8,8 @@ DEFAULT_REQUIREMENTS_PATH = "/requirements"
 DEFAULT_ANCESTORS_PATH = "/ancestors"
 DEFAULT_SEARCH_PATH = "/search"
 DEFAULT_HEALTH_PATH = "/health"
+DEFAULT_DECISION_TREES_PATH = "/api/v1/decision-trees"
+DEFAULT_TAXONOMIES_PATH = "/api/v1/taxonomies"
 DEFAULT_OTEL_LOGS_PATH = "/v1/logs"
 DEFAULT_OTEL_TRACES_PATH = "/v1/traces"
 DEFAULT_OTEL_METRICS_PATH = "/v1/metrics"
@@ -73,6 +75,14 @@ class UrlSettings(EnvSettings):
             "Sits at the host root, not under the device-class collection."
         ),
     )
+    decision_trees_path: str = Field(
+        default=DEFAULT_DECISION_TREES_PATH,
+        description="Path appended to odas_base_url for the AI decision-tree collection.",
+    )
+    taxonomies_path: str = Field(
+        default=DEFAULT_TAXONOMIES_PATH,
+        description="Path appended to odas_base_url for resolving a taxonomy leaf by architecture name.",
+    )
 
     # ---- telemetry ----
     @computed_field
@@ -109,6 +119,19 @@ class UrlSettings(EnvSettings):
     def device_class_url(self, class_id: str) -> str:
         """One class with its ancestors, children, and siblings."""
         return f"{self.device_classes_url}/{class_id}"
+
+    # ---- architecture selection ----
+    @computed_field
+    @property
+    def decision_trees_url(self) -> str:
+        """Collection of AI decision trees, one per device class."""
+        return f"{self.odas_base_url}{self.decision_trees_path}"
+
+    @computed_field
+    @property
+    def taxonomies_url(self) -> str:
+        """Collection used to resolve a taxonomy leaf by architecture name."""
+        return f"{self.odas_base_url}{self.taxonomies_path}"
 
     # ---- requirements ----
     @computed_field
