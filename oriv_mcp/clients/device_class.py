@@ -6,6 +6,7 @@ import httpx
 from pydantic import SecretStr
 
 from oriv_mcp.clients.base import ApiClient
+from oriv_mcp.clients.odas import BASE_URL_ENV_VAR, CREDENTIAL_HINT
 from oriv_mcp.schemas.device_class import (
     GetDeviceClassOutput,
     ListDeviceClassesOutput,
@@ -13,11 +14,6 @@ from oriv_mcp.schemas.device_class import (
 )
 
 SERVICE_LABEL = "device-class API"
-BASE_URL_ENV_VAR = "ODAS_BASE_URL"
-
-# The caller supplies its own ODAS credential on this header; the server holds none.
-ODAS_TOKEN_HEADER = "X-ODAS-Token"
-CREDENTIAL_HINT = f"Supply a valid ODAS token on the {ODAS_TOKEN_HEADER} request header."
 
 # Node ids carry a colon (`group:<slug>`, `class:<key>`). Colons are legal in a
 # path segment, so they are left intact rather than percent-encoded, which a

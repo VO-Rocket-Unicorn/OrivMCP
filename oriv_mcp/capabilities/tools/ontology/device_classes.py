@@ -4,7 +4,7 @@ from mcp.server.mcpserver import Context
 from pydantic import Field
 
 from oriv_mcp.clients import device_class_client
-from oriv_mcp.clients.device_class import ODAS_TOKEN_HEADER
+from oriv_mcp.clients.odas import ODAS_TOKEN_HEADER, ODAS_TOKEN_HINT
 from oriv_mcp.schemas.device_class import (
     GetDeviceClassOutput,
     ListDeviceClassesOutput,
@@ -12,11 +12,6 @@ from oriv_mcp.schemas.device_class import (
 )
 from oriv_mcp.server.app import mcp_app
 from oriv_mcp.utils.request_headers import require_secret_header
-
-ODAS_TOKEN_HINT = (
-    "The caller must supply its ODAS token on that header; this server holds no "
-    "credentials of its own."
-)
 
 MIN_LIST_DEPTH = 1
 DEFAULT_LIST_DEPTH = 1
