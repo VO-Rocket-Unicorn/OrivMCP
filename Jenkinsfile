@@ -622,6 +622,7 @@ pipeline {
       when {
         anyOf {
           branch 'dev'
+          branch 'qa'
         }
       }
 
