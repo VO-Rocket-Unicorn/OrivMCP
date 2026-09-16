@@ -71,3 +71,11 @@ class GetDeviceClassOutput(BaseModel):
             "most likely to be confused with it."
         )
     )
+
+
+class ListDeviceClassVendorsOutput(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    vendors: list[str] = Field(
+        description="Vendor names with a datasheet profile for this device class."
+    )

@@ -7,6 +7,7 @@ DEFAULT_PROJECTS_PATH = "/api/v1/projects"
 DEFAULT_REQUIREMENTS_PATH = "/requirements"
 DEFAULT_ANCESTORS_PATH = "/ancestors"
 DEFAULT_SEARCH_PATH = "/search"
+DEFAULT_VENDORS_PATH = "/vendors"
 DEFAULT_HEALTH_PATH = "/health"
 DEFAULT_DECISION_TREES_PATH = "/api/v1/decision-trees"
 DEFAULT_TAXONOMIES_PATH = "/api/v1/taxonomies"
@@ -55,6 +56,10 @@ class UrlSettings(EnvSettings):
     search_path: str = Field(
         default=DEFAULT_SEARCH_PATH,
         description="Path appended to the device-class collection for keyword search.",
+    )
+    vendors_path: str = Field(
+        default=DEFAULT_VENDORS_PATH,
+        description="Path appended to one device class's URL for its vendor profile names.",
     )
     projects_path: str = Field(
         default=DEFAULT_PROJECTS_PATH,

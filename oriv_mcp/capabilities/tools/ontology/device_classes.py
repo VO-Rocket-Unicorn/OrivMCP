@@ -8,6 +8,7 @@ from oriv_mcp.clients.odas import ODAS_TOKEN_HEADER, ODAS_TOKEN_HINT
 from oriv_mcp.schemas.device_class import (
     GetDeviceClassOutput,
     ListDeviceClassesOutput,
+    ListDeviceClassVendorsOutput,
     SearchDeviceClassesOutput,
 )
 from oriv_mcp.server.app import mcp_app
@@ -101,3 +102,19 @@ async def get_device_class(
 ) -> GetDeviceClassOutput:
     token = require_secret_header(ctx, ODAS_TOKEN_HEADER, ODAS_TOKEN_HINT)
     return await device_class_client.get_device_class(token, id)
+
+
+@mcp_app.tool(
+    name="list_device_class_vendors",
+    description=(
+        "List vendors that have a datasheet profile for a device class. Use "
+        "after confirming the class with get_device_class, to see which "
+        "vendors' datasheets have already been profiled for it."
+    ),
+)
+async def list_device_class_vendors(
+    ctx: Context,
+    id: Annotated[str, Field(description="Id of the device class to look up vendors for.")],
+) -> ListDeviceClassVendorsOutput:
+    token = require_secret_header(ctx, ODAS_TOKEN_HEADER, ODAS_TOKEN_HINT)
+    return await device_class_client.list_device_class_vendors(token, id)
