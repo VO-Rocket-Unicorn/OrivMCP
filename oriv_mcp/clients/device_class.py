@@ -10,6 +10,7 @@ from oriv_mcp.clients.odas import BASE_URL_ENV_VAR, CREDENTIAL_HINT
 from oriv_mcp.schemas.device_class import (
     GetDeviceClassOutput,
     ListDeviceClassesOutput,
+    ListDeviceClassVendorsOutput,
     SearchDeviceClassesOutput,
 )
 
@@ -36,6 +37,7 @@ class DeviceClassClient(ApiClient):
         http_client: httpx.AsyncClient,
         collection_url: str,
         search_url: str,
+        vendors_path: str,
         health_url: str,
     ) -> None:
         super().__init__(
@@ -46,6 +48,7 @@ class DeviceClassClient(ApiClient):
         )
         self._collection_url = collection_url
         self._search_url = search_url
+        self._vendors_path = vendors_path
         self._health_url = health_url
 
     async def check_health(self) -> tuple[bool, str]:
@@ -53,6 +56,9 @@ class DeviceClassClient(ApiClient):
 
     def _item_url(self, class_id: str) -> str:
         return f"{self._collection_url}/{quote(class_id, safe=ID_SAFE_CHARACTERS)}"
+
+    def _vendors_url(self, class_id: str) -> str:
+        return f"{self._item_url(class_id)}{self._vendors_path}"
 
     async def list_device_classes(
         self, token: SecretStr, parent_id: str | None, depth: int, cursor: str | None
@@ -82,3 +88,10 @@ class DeviceClassClient(ApiClient):
         self, token: SecretStr, class_id: str
     ) -> GetDeviceClassOutput:
         return await self.get(self._item_url(class_id), GetDeviceClassOutput, token)
+
+    async def list_device_class_vendors(
+        self, token: SecretStr, class_id: str
+    ) -> ListDeviceClassVendorsOutput:
+        return await self.get(
+            self._vendors_url(class_id), ListDeviceClassVendorsOutput, token
+        )

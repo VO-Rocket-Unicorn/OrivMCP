@@ -20,6 +20,7 @@ device_class_client = DeviceClassClient(
     http_client=http_client,
     collection_url=settings.urls.device_classes_url,
     search_url=settings.urls.device_classes_search_url,
+    vendors_path=settings.urls.vendors_path,
     health_url=settings.urls.odas_health_url,
 )
 
