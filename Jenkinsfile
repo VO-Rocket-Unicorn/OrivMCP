@@ -88,10 +88,7 @@ pipeline {
 
               echo "Running Trivy scan (CRITICAL only)..."
 
-              # legacy/ is the retired Python implementation: never built or
-              # shipped, so its lockfile must not gate the pipeline.
               trivy fs . \
-                --skip-dirs legacy \
                 --scanners vuln \
                 --severity CRITICAL \
                 --format json \

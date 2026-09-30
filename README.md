@@ -189,8 +189,3 @@ docker run --env-file .env -p 8000:8000 oriv-mcp
 ```
 
 The image is a static binary on `distroless/static`, running as uid 10001.
-
-## Legacy
-
-The original Python implementation is kept in [`legacy/`](legacy/README.md) for
-reference. It is not built, tested or deployed.
