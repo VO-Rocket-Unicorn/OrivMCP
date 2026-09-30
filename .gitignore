@@ -764,3 +764,6 @@ ehthumbs.db
 
 # claude
 .claude
+# Go
+/oriv-mcp
+*.test
