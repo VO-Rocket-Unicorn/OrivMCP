@@ -81,7 +81,7 @@ func NewHTTPHandler(deps Deps, server *mcp.Server) http.Handler {
 	mux.Handle(mcpPath, guarded)
 	if mcpPath != config.RootPath {
 		// "/" is a catch-all in a ServeMux; "/{$}" matches the root exactly,
-		// as the Python route did.
+		// so every other unknown path still 404s.
 		mux.Handle("/{$}", guarded)
 	}
 	return mux

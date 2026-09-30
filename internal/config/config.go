@@ -2,9 +2,9 @@
 //
 // Every group reads the same flat environment (and `.env` file), so grouping
 // changes how config is addressed in code (settings.Server.Port) without
-// renaming a single environment variable. Lookup is case-insensitive and a
-// real environment variable wins over the `.env` file, as with
-// pydantic-settings, which the Python implementation used.
+// renaming a single environment variable. Lookup is case-insensitive, and a
+// real environment variable wins over the `.env` file, so a deployment can
+// override any value without editing the file.
 package config
 
 import (
@@ -50,9 +50,9 @@ type ServerSettings struct {
 	ProjectName string
 	Host        string
 	Port        int
-	// Workers is accepted for compatibility with the Python deployment's
-	// environment. A Go process already schedules across every core, so it is
-	// not used.
+	// Workers is accepted so a deployment environment that still sets
+	// WORKERS keeps starting. A Go process already schedules across every
+	// core, so it is not used.
 	Workers          int
 	TimeoutKeepAlive int // seconds
 	// MCPPath is where the streamable HTTP MCP endpoint is served. It is also

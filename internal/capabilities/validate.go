@@ -11,13 +11,13 @@ import (
 	"github.com/google/jsonschema-go/jsonschema"
 )
 
-// argsValidator checks a tool's arguments against its (flat) input schema
-// the way pydantic did in the Python implementation. Every violation is
-// reported in one message, missing arguments get their defaults, extra
-// arguments are ignored, and a whole-number string is accepted for an
-// integer argument.
+// argsValidator checks a tool's arguments against its (flat) input schema.
+// Every violation is reported in one message, in the wording of pydantic's
+// validation errors, which a model reads to correct its call. Missing
+// arguments get their defaults, extra arguments are ignored, and a
+// whole-number string is accepted for an integer argument.
 type argsValidator struct {
-	model  string // "<tool>Arguments", as pydantic named the model
+	model  string // "<tool>Arguments", the name each message reports against
 	fields []fieldSpec
 }
 
@@ -167,7 +167,7 @@ func (f fieldSpec) check(value any) (any, string) {
 }
 
 // asInteger accepts a JSON integer, a whole float, or a whole-number
-// string, as pydantic's lax mode does.
+// string: models often send numbers as strings, and "2" is unambiguous.
 func asInteger(value any) (int64, string) {
 	switch v := value.(type) {
 	case json.Number:

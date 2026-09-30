@@ -9,13 +9,12 @@ import (
 	"github.com/VO-Rocket-Unicorn/OrivMCP/internal/config"
 )
 
-// maxRequestBodyBytes caps an MCP request body, as the Python SDK did.
+// maxRequestBodyBytes caps an MCP request body at 4 MiB.
 const maxRequestBodyBytes = 4 << 20
 
-// transportGuard enforces the checks the Python MCP SDK's transport-security
-// middleware applied to the MCP endpoint: a JSON Content-Type on POST, a
-// bounded body, and DNS-rebinding protection against the Host and Origin
-// allowlists.
+// transportGuard enforces the transport checks on the MCP endpoint: a JSON
+// Content-Type on POST, a bounded body, and DNS-rebinding protection against
+// the Host and Origin allowlists.
 type transportGuard struct {
 	allowedHosts   []string
 	allowedOrigins []string

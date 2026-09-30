@@ -46,8 +46,8 @@ func inferSchema[T any]() *jsonschema.Schema {
 
 // outputSchema infers T's schema as the tool publishes it. A list is only
 // ever sent as an array, so only a pointer-to-slice (a field that is really
-// null sometimes) stays nullable. Unknown fields are not ruled out, as
-// pydantic did not rule them out.
+// null sometimes) stays nullable. Unknown fields are not ruled out, so adding
+// an output field later does not break a client that validates against it.
 func outputSchema[T any]() *jsonschema.Schema {
 	schema := inferSchema[T]()
 	tighten(schema, reflect.TypeFor[T]())
@@ -93,7 +93,8 @@ func tighten(schema *jsonschema.Schema, t reflect.Type) {
 // inputSchema infers T's schema and applies each argument's description,
 // default and bounds, so the published schema carries the same constraints
 // the arguments are validated against. Extra arguments are ignored rather
-// than refused, as pydantic ignored them.
+// than refused, so a call carrying an argument this server does not know
+// still gets an answer.
 func inputSchema[T any](args map[string]arg) *jsonschema.Schema {
 	schema := inferSchema[T]()
 	schema.AdditionalProperties = nil

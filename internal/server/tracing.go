@@ -18,10 +18,10 @@ import (
 
 const tracerName = "github.com/VO-Rocket-Unicorn/OrivMCP/internal/server"
 
-// tracingMiddleware wraps each inbound MCP message in a SERVER span, as the
-// Python MCP SDK did: named "<method> <tool or prompt>", parented on the W3C
-// trace context a client may carry in params._meta, and marked as an error
-// when the call fails or a tool reports one.
+// tracingMiddleware wraps each inbound MCP message in a SERVER span: named
+// "<method> <tool or prompt>", parented on the W3C trace context a client may
+// carry in params._meta, and marked as an error when the call fails or a tool
+// reports one.
 func tracingMiddleware(next mcp.MethodHandler) mcp.MethodHandler {
 	tracer := otel.Tracer(tracerName)
 	return func(ctx context.Context, method string, req mcp.Request) (mcp.Result, error) {

@@ -3,7 +3,8 @@ package odas
 import "testing"
 
 // Expected values were produced by Python's urllib.parse.quote and
-// quote_plus, which the Python implementation used.
+// quote_plus, so the paths and query strings sent to ODAS stay exactly the
+// ones it has always received.
 func TestQuoteMatchesPython(t *testing.T) {
 	cases := []struct {
 		in, safeColon, safeNone, plus string

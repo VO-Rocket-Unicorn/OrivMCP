@@ -4,15 +4,15 @@ import "strings"
 
 const upperHex = "0123456789ABCDEF"
 
-// quote percent-encodes s for one URL path segment, byte for byte as
-// Python's urllib.parse.quote(s, safe=safe) does. Letters, digits and
-// "_.-~" are never encoded, and "/" is encoded unless it is in safe.
+// quote percent-encodes s for one URL path segment. Letters, digits and
+// "_.-~" are never encoded, nor is any character in safe; every other byte,
+// "/" included, becomes an uppercase %XX.
 func quote(s, safe string) string {
 	return escape(s, safe, false)
 }
 
-// queryEscape encodes a query key or value as urllib.parse.quote_plus does,
-// which is how httpx built query strings in the Python implementation.
+// queryEscape encodes a query key or value like quote, except that a space
+// becomes "+".
 func queryEscape(s string) string {
 	return escape(s, "", true)
 }

@@ -24,7 +24,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
-// metricExportInterval matches the Python PeriodicExportingMetricReader.
+// metricExportInterval is how often metrics are pushed to the collector.
 const metricExportInterval = 5 * time.Second
 
 // Options configures the providers. An empty endpoint leaves that signal off.

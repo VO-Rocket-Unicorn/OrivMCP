@@ -1,11 +1,10 @@
 // Package schemas holds the shapes this server reads from ODAS and returns
 // from its tools.
 //
-// Decoding stands in for pydantic validation. Required fields must be
-// present, enum values must be known, a field may be read under several
-// names (first match wins, like pydantic's AliasChoices), and null is refused
-// wherever the field is not nullable. Any violation makes the whole response
-// malformed.
+// Decoding validates as well as parses. Required fields must be present,
+// enum values must be known, a field may be read under several names (the
+// first one present wins), and null is refused wherever the field is not
+// nullable. Any violation makes the whole response malformed.
 package schemas
 
 import (

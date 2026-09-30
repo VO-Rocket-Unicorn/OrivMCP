@@ -76,9 +76,9 @@ func toolError(format string, args ...any) *ToolError {
 
 // NewHTTPClient is the one pooled HTTP client every outbound client shares.
 //
-// Redirects are not followed, as with httpx, which the Python implementation
-// used. A redirect response is then read like any other, and the caller's
-// bearer token is never replayed to wherever a redirect points.
+// Redirects are not followed. A redirect response is read like any other,
+// and the caller's bearer token is never replayed to wherever a redirect
+// points.
 func NewHTTPClient(timeout time.Duration, maxConnections int) *http.Client {
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.MaxConnsPerHost = maxConnections
@@ -176,9 +176,10 @@ func payload(env map[string]json.RawMessage) []byte {
 	return raw
 }
 
-// truthyText renders a JSON value the way Python's truthiness and
-// f-string formatting would treat it: "" for null, false, 0, "" and empty
-// containers, the bare text for a string, compact JSON otherwise.
+// truthyText renders a JSON value as message text. An empty value (null,
+// false, 0, "" or an empty array or object) is "" and counts as no message;
+// a string is its bare text, true is "True", and anything else is compact
+// JSON.
 func truthyText(raw json.RawMessage) string {
 	var value any
 	if err := json.Unmarshal(raw, &value); err != nil {

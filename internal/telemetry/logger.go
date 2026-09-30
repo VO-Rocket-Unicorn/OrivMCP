@@ -16,7 +16,7 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-// Rotation matches the Python RotatingFileHandler: 10 MB per file, 5 kept.
+// Log files rotate at 10 MB, and the 5 most recent rotated files are kept.
 const (
 	maxLogFileMB   = 10
 	maxLogBackups  = 5
@@ -33,8 +33,8 @@ type LoggerOptions struct {
 	// FilePath is a directory (the file is <Name>.log inside it) or, when it
 	// has an extension, the file itself. Empty disables file logging.
 	FilePath string
-	// LoggerProvider, when set, also ships records over OTLP at INFO and
-	// above, as the Python OTel logging handler did.
+	// LoggerProvider, when set, also ships records over OTLP. Only INFO and
+	// above go there, even when Level is DEBUG, so debug noise stays local.
 	LoggerProvider *sdklog.LoggerProvider
 }
 
@@ -94,7 +94,7 @@ func (f levelFilter) WithGroup(name string) slog.Handler {
 	return levelFilter{Handler: f.Handler.WithGroup(name), min: f.min}
 }
 
-// lineHandler writes the same line format the Python file handler used:
+// lineHandler writes one plain-text line per record:
 //
 //	2006-01-02 15:04:05 [INFO] OrivMCP message key=value
 type lineHandler struct {
@@ -170,7 +170,8 @@ func writeAttr(b *strings.Builder, group string, a slog.Attr) {
 	fmt.Fprintf(b, " %s=%q", key, a.Value.String())
 }
 
-// levelName uses Python's level spelling so existing log tooling still matches.
+// levelName spells levels ERROR, WARNING, INFO and DEBUG (WARNING, not WARN),
+// so searches and alerts written against earlier log files still match.
 func levelName(level slog.Level) string {
 	switch {
 	case level >= slog.LevelError:
