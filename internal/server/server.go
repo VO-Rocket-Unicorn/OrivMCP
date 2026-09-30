@@ -133,10 +133,20 @@ func ServeHTTP(ctx context.Context, deps Deps, handler http.Handler) error {
 		ReadHeaderTimeout: 30 * time.Second,
 	}
 
+	// Bind before announcing, so "Serving" is only logged once the port is
+	// actually ours.
+	listener, err := net.Listen("tcp", httpServer.Addr)
+	if err != nil {
+		return err // already names the address, e.g. "listen tcp 0.0.0.0:8001: bind: ..."
+	}
+	// The configured host reads better than the wildcard the OS reports
+	// ("[::]"); the port is the bound one, which differs when PORT=0.
+	boundPort := strconv.Itoa(listener.Addr().(*net.TCPAddr).Port)
+	deps.Logger.Info("Serving MCP on http://" + net.JoinHostPort(s.Host, boundPort) + s.MCPPath)
+
 	errs := make(chan error, 1)
 	go func() {
-		deps.Logger.Info("Serving MCP on http://" + httpServer.Addr + s.MCPPath)
-		errs <- httpServer.ListenAndServe()
+		errs <- httpServer.Serve(listener)
 	}()
 
 	select {

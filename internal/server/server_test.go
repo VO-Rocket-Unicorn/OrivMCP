@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -243,6 +245,72 @@ func TestEndToEnd(t *testing.T) {
 			t.Errorf("spans: found tool span %v, error span %v", found, errored)
 		}
 	})
+}
+
+func TestServeHTTPReportsBusyPortWithoutAnnouncing(t *testing.T) {
+	busy, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer busy.Close()
+	port := busy.Addr().(*net.TCPAddr).Port
+
+	var logs strings.Builder
+	settings := &config.Settings{Server: config.ServerSettings{Host: "127.0.0.1", Port: port, MCPPath: "/mcp"}}
+	deps := Deps{Settings: settings, Logger: slog.New(slog.NewTextHandler(&logs, nil))}
+
+	err = ServeHTTP(context.Background(), deps, http.NotFoundHandler())
+	if err == nil || !strings.Contains(err.Error(), "listen tcp 127.0.0.1:") {
+		t.Errorf("error = %v", err)
+	}
+	if strings.Contains(logs.String(), "Serving MCP") {
+		t.Errorf("announced serving on a port it never bound:\n%s", logs.String())
+	}
+}
+
+func TestServeHTTPAnnouncesAfterBinding(t *testing.T) {
+	var logs syncBuilder
+	settings := &config.Settings{Server: config.ServerSettings{Host: "127.0.0.1", Port: 0, MCPPath: "/mcp"}}
+	deps := Deps{Settings: settings, Logger: slog.New(slog.NewTextHandler(&logs, nil))}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- ServeHTTP(ctx, deps, http.NotFoundHandler()) }()
+
+	// Port 0 means "any free port"; the log must name the one really bound.
+	deadline := time.Now().Add(5 * time.Second)
+	for !strings.Contains(logs.String(), "Serving MCP on http://127.0.0.1:") {
+		if time.Now().After(deadline) {
+			t.Fatalf("never announced; logs:\n%s", logs.String())
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if strings.Contains(logs.String(), "127.0.0.1:0/mcp") {
+		t.Errorf("logged the requested port, not the bound one:\n%s", logs.String())
+	}
+	cancel()
+	if err := <-done; err != nil {
+		t.Errorf("shutdown error = %v", err)
+	}
+}
+
+// syncBuilder is a strings.Builder safe to write from one goroutine and read
+// from another.
+type syncBuilder struct {
+	mu sync.Mutex
+	b  strings.Builder
+}
+
+func (s *syncBuilder) Write(p []byte) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.b.Write(p)
+}
+
+func (s *syncBuilder) String() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.b.String()
 }
 
 func TestHTTPRoutesAndGuard(t *testing.T) {
