@@ -1,5 +1,28 @@
-# === base ===
-FROM python:3.12-slim-bookworm
+# === build ===
+FROM golang:1.26-bookworm AS build
+
+WORKDIR /src
+
+# ---- dependencies first, so they cache across source changes ----
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY cmd ./cmd
+COPY internal ./internal
+
+# The service version reported to MCP clients and telemetry.
+ARG APP_VERSION=0.1.0
+
+# ---- static binary: runs on a base image with no libc ----
+RUN CGO_ENABLED=0 GOOS=linux go build \
+    -trimpath \
+    -buildvcs=false \
+    -ldflags "-s -w -X main.Version=${APP_VERSION}" \
+    -o /out/oriv-mcp ./cmd/oriv-mcp \
+    && mkdir -p /out/logs
+
+# === runtime ===
+FROM gcr.io/distroless/static-debian12
 
 ARG BUILD_DATE
 ARG GIT_SHA
@@ -12,49 +35,17 @@ LABEL org.opencontainers.image.title="ORIV MCP" \
     org.opencontainers.image.revision="${GIT_SHA}" \
     org.opencontainers.image.version="${VERSION}"
 
-# ---- runtime env hardening ----
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1 \
-    UV_CACHE_DIR=/tmp/uv-cache \
-    UV_PYTHON_PREFERENCE=only-system \
-    PYTHONFAULTHANDLER=1
-
-# ---- system dependencies (minimal) ----
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    curl \
-    git \
-    && rm -rf /var/lib/apt/lists/*
-
-# ---- install uv globally (not in /root) ----
-RUN curl -fsSL https://astral.sh/uv/install.sh | \
-    UV_INSTALL_DIR=/usr/local/bin sh
-
-# ---- create non-root user ----
-RUN useradd \
-    --system \
-    --uid 10001 \
-    --create-home \
-    --shell /usr/sbin/nologin \
-    appuser
-
 WORKDIR /app
 
-# ---- copy project files ----
-COPY . /app
+COPY --from=build /out/oriv-mcp /app/oriv-mcp
+# Logs go to /app/logs unless LOG_FILE_PATH says otherwise.
+COPY --from=build --chown=10001:10001 /out/logs /app/logs
 
-# ---- ensure correct ownership ----
-RUN chown -R 10001:10001 /app
-
-# ---- drop privileges early ----
+# ---- non-root ----
 USER 10001:10001
-
-# ---- dependency resolution as non-root ----
-RUN uv sync --locked --link-mode=copy
 
 # ---- expose port if this is an API ----
 # EXPOSE 8000
 
 # ---- runtime command ----
-CMD ["uv", "run", "app"]
+ENTRYPOINT ["/app/oriv-mcp"]
