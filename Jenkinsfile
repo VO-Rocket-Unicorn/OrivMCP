@@ -39,36 +39,34 @@ pipeline {
         stage('Build Verification') {
           agent {
             docker {
-            image 'python:3.12-slim'
+            image 'golang:1.26-bookworm'
             args '-u root --cpus=1'
             }
+          }
+          environment {
+            GOFLAGS = '-buildvcs=false'
+            GOCACHE = '/tmp/go-cache'
+            GOMODCACHE = '/tmp/go-mod'
           }
           steps {
             sh '''
               set -eux
 
-              # Install required OS packages
-              apt-get update
-              apt-get install -y curl ca-certificates git
+              go version
 
-              # Install uv
-              curl -LsSf https://astral.sh/uv/install.sh | sh
+              # Dependencies must match go.sum exactly
+              go mod download
+              go mod verify
 
-              # Load uv into PATH
-              export PATH="$HOME/.local/bin:$PATH"
+              # Formatting and static checks
+              test -z "$(gofmt -l cmd internal)"
+              go vet ./...
 
-              uv --version
+              # Tests, with the race detector
+              go test -race -count=1 ./...
 
-              # Install Python
-              uv python install 3.12
-
-              # Temporary fix for failing dependency build
-              if [ -d "deps/lib-oriv-agents-sdk/deps/lib-oriv-tools" ]; then
-                  touch deps/lib-oriv-agents-sdk/deps/lib-oriv-tools/README.md
-              fi
-
-              # Install dependencies
-              uv sync --locked --dev
+              # The binary the image ships
+              CGO_ENABLED=0 go build -o /tmp/oriv-mcp ./cmd/oriv-mcp
             '''
           }
         }
@@ -215,8 +213,10 @@ pipeline {
                   -Dsonar.projectKey="${SONAR_PROJECT_KEY}" \
                   -Dsonar.host.url="${SONAR_URL}" \
                   -Dsonar.token="${SONAR_TOKEN}" \
-                  -Dsonar.sources=oriv_mcp \
-                  -Dsonar.exclusions=**/__pycache__/**,**/.venv/**,**/venv/**,**/build/**,**/dist/**
+                  -Dsonar.sources=cmd,internal \
+                  -Dsonar.tests=cmd,internal \
+                  -Dsonar.test.inclusions=**/*_test.go \
+                  -Dsonar.exclusions=**/*_test.go
               '''
             }
           }
@@ -622,6 +622,7 @@ pipeline {
       when {
         anyOf {
           branch 'dev'
+          branch 'qa'
         }
       }
 
