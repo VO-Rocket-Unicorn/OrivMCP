@@ -9,6 +9,7 @@ RUN go mod download
 
 COPY cmd ./cmd
 COPY internal ./internal
+COPY orivmcp ./orivmcp
 
 # The service version reported to MCP clients and telemetry.
 ARG APP_VERSION=0.1.0

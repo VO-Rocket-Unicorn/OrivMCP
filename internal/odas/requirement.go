@@ -251,16 +251,16 @@ func (c *RequirementClient) Node(ctx context.Context, token Secret, projectID, r
 		path   []string
 	)
 	group, groupCtx := errgroup.WithContext(ctx)
-	group.Go(func() error {
+	group.Go(recovering(func() error {
 		var err error
 		detail, err = get[schemas.OdasRequirementDetail](groupCtx, &c.apiClient, c.itemURL(projectID, requirementID), token)
 		return err
-	})
-	group.Go(func() error {
+	}))
+	group.Go(recovering(func() error {
 		var err error
 		path, err = c.ancestorIDs(groupCtx, token, projectID, requirementID)
 		return err
-	})
+	}))
 	if err := group.Wait(); err != nil {
 		return schemas.RequirementDetail{}, err
 	}

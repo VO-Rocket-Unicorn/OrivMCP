@@ -166,20 +166,48 @@ mcp-inspector --cli --server-url http://localhost:8000/mcp --transport http `
 ## Developing
 
 ```bash
-gofmt -l cmd internal       # should print nothing
+gofmt -l cmd internal orivmcp   # should print nothing
 go vet ./...
 go test ./...
 ```
 
 | Package                 | What it holds |
 | ----------------------- | ------------- |
-| `cmd/oriv-mcp`          | entry point: config → telemetry → clients → server |
+| `cmd/oriv-mcp`          | entry point: the HTTP server via `orivmcp`, or a stdio session |
+| `orivmcp`               | the public, embeddable server: `Start`, `URL`, `Shutdown` |
+| `internal/app`          | the runtime both share: telemetry → logger → clients → MCP server |
 | `internal/config`       | settings, read from the environment and `.env` |
 | `internal/telemetry`    | OpenTelemetry providers and the logger |
 | `internal/odas`         | outbound ODAS clients: envelope, error mapping, URL building |
 | `internal/schemas`      | ODAS wire types and tool output types |
 | `internal/capabilities` | the tools, prompt and resource, and argument validation |
 | `internal/server`       | HTTP routing, Host/Origin allowlist, tracing, lifecycle |
+
+## Embedding
+
+A Go program can run this server in-process with the `orivmcp` package. It is the
+same server, configured by the same variables, but the host owns its lifecycle:
+
+```go
+listener, _ := net.Listen("tcp4", "127.0.0.1:0") // the host picks the port
+srv, err := orivmcp.Start(ctx, orivmcp.Options{
+    Environ:  os.Environ(), // the configuration; no .env file is read
+    Listener: listener,     // HOST and PORT are then not used
+    Version:  "1.2.3",
+})
+if err != nil {
+    return err // invalid configuration; the listener is already closed
+}
+defer srv.Shutdown(context.Background())
+mcpURL := srv.URL() // e.g. http://127.0.0.1:53124/mcp
+```
+
+`Start` returns once the listener is bound; the ODAS probe runs in the
+background. `Shutdown` drains requests, flushes telemetry and closes the log
+file, and returns once everything it started has stopped. A panic while
+handling a request is recovered and answered as an internal error, so it never
+ends the host process. The server sets the OpenTelemetry globals, so run one
+per process.
 
 ## Docker
 

@@ -49,7 +49,9 @@ func NewMCPServer(deps Deps) *mcp.Server {
 		},
 	)
 	tools := capabilities.Register(server, deps.Clients, deps.Logger)
-	server.AddReceivingMiddleware(tracingMiddleware, unknownToolMiddleware(tools))
+	// The first middleware runs outermost: the span sees the error a
+	// recovered panic becomes.
+	server.AddReceivingMiddleware(tracingMiddleware, recoverMiddleware(deps.Logger), unknownToolMiddleware(tools))
 	return server
 }
 
@@ -120,29 +122,32 @@ func Preflight(ctx context.Context, logger *slog.Logger, client *odas.DeviceClas
 		"as unavailable until this is fixed.", detail))
 }
 
-// ServeHTTP serves until ctx is cancelled, then drains in-flight requests.
+// ServeHTTP binds the configured HOST:PORT and serves until ctx is cancelled,
+// then drains in-flight requests.
 func ServeHTTP(ctx context.Context, deps Deps, handler http.Handler) error {
+	s := deps.Settings.Server
+	// Bind before announcing, so "Serving" is only logged once the port is
+	// actually ours.
+	listener, err := net.Listen("tcp", net.JoinHostPort(s.Host, strconv.Itoa(s.Port)))
+	if err != nil {
+		return err // already names the address, e.g. "listen tcp 0.0.0.0:8001: bind: ..."
+	}
+	return Serve(ctx, deps, handler, listener)
+}
+
+// Serve serves on a listener that is already bound, until ctx is cancelled,
+// then drains in-flight requests. It closes the listener.
+func Serve(ctx context.Context, deps Deps, handler http.Handler, listener net.Listener) error {
 	s := deps.Settings.Server
 	if s.Workers > 1 {
 		deps.Logger.Warn(fmt.Sprintf("WORKERS=%d is ignored: a single Go process already uses every core", s.Workers))
 	}
 	httpServer := &http.Server{
-		Addr:              net.JoinHostPort(s.Host, strconv.Itoa(s.Port)),
 		Handler:           handler,
 		IdleTimeout:       time.Duration(s.TimeoutKeepAlive) * time.Second,
 		ReadHeaderTimeout: 30 * time.Second,
 	}
-
-	// Bind before announcing, so "Serving" is only logged once the port is
-	// actually ours.
-	listener, err := net.Listen("tcp", httpServer.Addr)
-	if err != nil {
-		return err // already names the address, e.g. "listen tcp 0.0.0.0:8001: bind: ..."
-	}
-	// The configured host reads better than the wildcard the OS reports
-	// ("[::]"); the port is the bound one, which differs when PORT=0.
-	boundPort := strconv.Itoa(listener.Addr().(*net.TCPAddr).Port)
-	deps.Logger.Info("Serving MCP on http://" + net.JoinHostPort(s.Host, boundPort) + s.MCPPath)
+	deps.Logger.Info("Serving MCP on http://" + announcedAddr(s.Host, listener.Addr()) + s.MCPPath)
 
 	errs := make(chan error, 1)
 	go func() {
@@ -157,8 +162,31 @@ func ServeHTTP(ctx context.Context, deps Deps, handler http.Handler) error {
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
-	if err := httpServer.Shutdown(shutdownCtx); err != nil && !errors.Is(err, http.ErrServerClosed) {
+	err := httpServer.Shutdown(shutdownCtx)
+	if err != nil {
+		// The drain timed out: cut the connections still open rather than
+		// leave them running past this call.
+		_ = httpServer.Close()
+	}
+	// Shutdown makes Serve return at once, but the goroutine may still be
+	// sending; wait for it so nothing outlives this call.
+	<-errs
+	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}
 	return nil
+}
+
+// announcedAddr is the address the "Serving" line names. For a wildcard bind
+// the configured host reads better than what the OS reports ("[::]"); the
+// port is always the bound one, which differs from PORT when PORT=0.
+func announcedAddr(host string, addr net.Addr) string {
+	tcp, ok := addr.(*net.TCPAddr)
+	if !ok {
+		return addr.String()
+	}
+	if len(tcp.IP) == 0 || tcp.IP.IsUnspecified() {
+		return net.JoinHostPort(host, strconv.Itoa(tcp.Port))
+	}
+	return tcp.String()
 }

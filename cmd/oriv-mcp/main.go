@@ -10,30 +10,31 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/joho/godotenv"
 	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/VO-Rocket-Unicorn/OrivMCP/internal/capabilities"
+	"github.com/VO-Rocket-Unicorn/OrivMCP/internal/app"
 	"github.com/VO-Rocket-Unicorn/OrivMCP/internal/config"
-	"github.com/VO-Rocket-Unicorn/OrivMCP/internal/odas"
-	"github.com/VO-Rocket-Unicorn/OrivMCP/internal/server"
-	"github.com/VO-Rocket-Unicorn/OrivMCP/internal/telemetry"
+	"github.com/VO-Rocket-Unicorn/OrivMCP/orivmcp"
 )
 
 // Version is the service version reported to MCP clients and telemetry.
 // Release builds set it with -ldflags "-X main.Version=...".
-var Version = "0.1.0"
+var Version = orivmcp.DefaultVersion
 
 const (
 	transportHTTP  = "http"
 	transportStdio = "stdio"
 )
+
+// stdioCleanupTimeout bounds the telemetry flush after a stdio session.
+const stdioCleanupTimeout = 5 * time.Second
 
 func main() {
 	transport := flag.String("transport", transportHTTP, "transport to serve: http or stdio")
@@ -50,99 +51,66 @@ func run(transport string) error {
 		return fmt.Errorf("unknown transport %q: want %s or %s", transport, transportHTTP, transportStdio)
 	}
 
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	if transport == transportStdio {
+		return runStdio(ctx)
+	}
+
+	environ, err := environWithDotEnv()
+	if err != nil {
+		return err
+	}
+	srv, err := orivmcp.Start(ctx, orivmcp.Options{Environ: environ, Version: Version})
+	if err != nil {
+		return err
+	}
+	<-srv.Done()
+	return srv.Err()
+}
+
+func runStdio(ctx context.Context) error {
 	settings, err := config.Load()
 	if err != nil {
 		return err
 	}
-
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-
-	tel, err := telemetry.New(ctx, telemetry.Options{
-		ServiceName:    settings.Server.ProjectName,
-		ServiceVersion: Version,
-		Environment:    string(settings.App.Environment),
-		LogEndpoint:    settings.URLs.OtelLogsURL(),
-		TraceEndpoint:  settings.URLs.OtelTracesURL(),
-		MetricEndpoint: settings.URLs.OtelMetricsURL(),
-	})
+	rt, err := app.New(ctx, settings, Version)
 	if err != nil {
 		return err
 	}
 	defer func() {
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), stdioCleanupTimeout)
 		defer cancel()
-		_ = tel.Shutdown(shutdownCtx)
+		_ = rt.Close(cleanupCtx)
 	}()
 
-	// The sandbox logs to the console at DEBUG. Everywhere else logs at INFO
-	// to a rotating file and to the collector.
-	sandbox := settings.App.Environment == config.EnvironmentSandbox
-	loggerOpts := telemetry.LoggerOptions{
-		Name:    settings.Server.ProjectName,
-		Level:   settings.App.LogLevel(),
-		Console: sandbox,
-	}
-	if !sandbox {
-		loggerOpts.FilePath = settings.ResolvedLogDir()
-		loggerOpts.LoggerProvider = tel.LoggerProvider
-	}
-	logger, logCloser, err := telemetry.NewLogger(loggerOpts)
-	if err != nil {
-		return err
-	}
-	defer logCloser.Close()
-
-	httpClient := odas.NewHTTPClient(
-		time.Duration(settings.HTTP.TimeoutSeconds*float64(time.Second)),
-		settings.HTTP.MaxConnections,
-	)
-	defer httpClient.CloseIdleConnections()
-
-	urls := settings.URLs
-	clients := capabilities.Clients{
-		DeviceClass: odas.NewDeviceClassClient(httpClient, logger, odas.DeviceClassURLs{
-			CollectionURL: urls.DeviceClassesURL(),
-			SearchURL:     urls.DeviceClassesSearchURL(),
-			VendorsPath:   urls.VendorsPath,
-			HealthURL:     urls.OdasHealthURL(),
-		}),
-		// Same host and same credential as the device-class client.
-		ArchitectureSelection: odas.NewArchitectureSelectionClient(httpClient, logger, odas.ArchitectureSelectionURLs{
-			DecisionTreesURL: urls.DecisionTreesURL(),
-			TaxonomiesURL:    urls.TaxonomiesURL(),
-			HealthURL:        urls.OdasHealthURL(),
-		}),
-		// Same host and same credential again, so the startup probe the
-		// device-class client runs covers this one too.
-		Requirement: odas.NewRequirementClient(httpClient, logger, odas.RequirementURLs{
-			ProjectsURL:      urls.ProjectsURL(),
-			RequirementsPath: urls.RequirementsPath,
-			AncestorsPath:    urls.AncestorsPath,
-		}),
-	}
-
-	deps := server.Deps{Settings: settings, Logger: logger, Clients: clients, Version: Version}
-	mcpServer := server.NewMCPServer(deps)
-
+	logger := rt.Deps.Logger
 	logger.Info("Starting up the application...")
 	defer logger.Info("Shutting down the application...")
-	server.Preflight(ctx, logger, clients.DeviceClass)
+	rt.Preflight(ctx)
 
-	if transport == transportStdio {
-		err := mcpServer.Run(ctx, &mcp.StdioTransport{})
-		if err != nil && !errors.Is(err, context.Canceled) && !isClientHangup(err) {
-			return err
-		}
-		return nil
-	}
-
-	err = server.ServeHTTP(ctx, deps, server.NewHTTPHandler(deps, mcpServer))
-	if err != nil && !errors.Is(err, http.ErrServerClosed) {
-		logger.Error("server stopped: " + err.Error())
+	err = rt.MCPServer.Run(ctx, &mcp.StdioTransport{})
+	if err != nil && !errors.Is(err, context.Canceled) && !isClientHangup(err) {
 		return err
 	}
 	return nil
+}
+
+// environWithDotEnv is the process environment with the working directory's
+// `.env` beneath it: a real environment variable wins over the file, as
+// config.Load does it.
+func environWithDotEnv() ([]string, error) {
+	dotenv, err := godotenv.Read(config.EnvFile)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return nil, fmt.Errorf("reading %s: %w", config.EnvFile, err)
+	}
+	environ := make([]string, 0, len(dotenv)+len(os.Environ()))
+	for key, value := range dotenv {
+		environ = append(environ, key+"="+value)
+	}
+	// Later pairs win in config.LoadFrom, so the real environment goes last.
+	return append(environ, os.Environ()...), nil
 }
 
 // codeServerClosing is the JSON-RPC error a session ends with once its

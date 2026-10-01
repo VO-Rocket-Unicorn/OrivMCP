@@ -59,7 +59,7 @@ pipeline {
               go mod verify
 
               # Formatting and static checks
-              test -z "$(gofmt -l cmd internal)"
+              test -z "$(gofmt -l cmd internal orivmcp)"
               go vet ./...
 
               # Tests, with the race detector

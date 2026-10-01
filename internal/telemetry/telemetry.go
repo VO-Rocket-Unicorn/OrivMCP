@@ -27,6 +27,9 @@ import (
 // metricExportInterval is how often metrics are pushed to the collector.
 const metricExportInterval = 5 * time.Second
 
+// abortShutdownTimeout bounds the cleanup when New fails part-way.
+const abortShutdownTimeout = 5 * time.Second
+
 // Options configures the providers. An empty endpoint leaves that signal off.
 type Options struct {
 	ServiceName    string
@@ -46,8 +49,9 @@ type Telemetry struct {
 
 // New builds the providers and installs them as the OpenTelemetry globals.
 // Exporters connect lazily, so an unreachable collector does not stop the
-// process from starting; export failures are reported by the SDK.
-func New(ctx context.Context, opts Options) (*Telemetry, error) {
+// process from starting; export failures are reported by the SDK. On error,
+// the providers already built are shut down, so nothing keeps running.
+func New(ctx context.Context, opts Options) (_ *Telemetry, err error) {
 	res, err := resource.New(ctx,
 		resource.WithFromEnv(),
 		resource.WithTelemetrySDK(),
@@ -66,6 +70,13 @@ func New(ctx context.Context, opts Options) (*Telemetry, error) {
 	))
 
 	t := &Telemetry{}
+	defer func() {
+		if err != nil {
+			shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), abortShutdownTimeout)
+			defer cancel()
+			_ = t.Shutdown(shutdownCtx)
+		}
+	}()
 
 	if opts.MetricEndpoint != "" {
 		exporter, err := otlpmetrichttp.New(ctx, otlpmetrichttp.WithEndpointURL(opts.MetricEndpoint))
